@@ -3,231 +3,474 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Psychrometric Chart - Mollier Diagram Simulator</title>
+    <title>Mollier Diagram - Professional Psychrometric Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
         .chart-container {
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: white;
+            background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.06);
         }
-        .grid-line {
-            stroke: #e5e7eb;
-            stroke-width: 1;
+
+        .temp-line {
+            fill: none;
+            stroke: #ef4444;
+            stroke-width: 1.5;
+            opacity: 0.5;
+            stroke-dasharray: 3,3;
         }
+
         .rh-curve {
             fill: none;
             stroke: #3b82f6;
-            stroke-width: 1.5;
+            stroke-width: 2;
             opacity: 0.6;
         }
-        .enthalpy-line {
-            fill: none;
-            stroke: #8b5cf6;
-            stroke-width: 1;
-            opacity: 0.4;
+
+        .rh-curve-100 {
+            stroke: #1e40af;
+            stroke-width: 2.5;
         }
+
         .state-point {
-            fill: #ef4444;
+            fill: #dc2626;
             stroke: white;
-            stroke-width: 2;
+            stroke-width: 3;
             cursor: pointer;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            transition: all 0.2s;
         }
+
+        .state-point:hover {
+            fill: #991b1b;
+            r: 8;
+        }
+
         .process-line {
             fill: none;
             stroke: #10b981;
-            stroke-width: 3;
+            stroke-width: 4;
             marker-end: url(#arrowhead);
+            filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
         }
+
         .comfort-zone {
-            fill: #86efac;
-            opacity: 0.2;
+            fill: url(#comfortGradient);
+            opacity: 0.25;
+            stroke: #059669;
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
         }
-        input:focus, select:focus {
-            outline: 2px solid #3b82f6;
-            outline-offset: 2px;
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .process-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(249,250,251,0.9));
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .process-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        table {
+            font-size: 0.9rem;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        thead th {
+            padding: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.75rem;
+        }
+
+        tbody tr {
+            transition: all 0.2s;
+        }
+
+        tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .section-icon {
+            font-size: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
         }
     </style>
 </head>
-<body class="bg-gray-50 p-4">
-    <div class="max-w-7xl mx-auto">
-        <header class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">🌡️ Psychrometric Chart Simulator</h1>
-            <p class="text-gray-600 mt-2">Interactive Mollier Diagram for HVAC Analysis</p>
+<body class="p-6">
+    <div class="max-w-[1920px] mx-auto">
+        <!-- Header -->
+        <header class="glass-card rounded-2xl p-8 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        Mollier Diagram Simulator
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-lg">Professional Psychrometric Analysis Tool</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Atmospheric Pressure</div>
+                    <div class="text-2xl font-bold text-purple-600"><span id="pressure">101.325</span> kPa</div>
+                </div>
+            </div>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Left Panel: Settings & Input -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Settings Card -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">⚙️ Settings</h2>
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            <!-- Left Sidebar: Settings & Input -->
+            <div class="xl:col-span-1 space-y-6">
+                <!-- Settings -->
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">⚙️</span>
+                        <h2 class="section-title">Settings</h2>
+                    </div>
 
                     <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Units</label>
-                            <select id="units" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                                <option value="SI">SI (°C, kJ/kg, kg/kg)</option>
-                                <option value="Imperial">Imperial (°F, BTU/lb, lb/lb)</option>
-                            </select>
+                        <div class="input-group">
+                            <label class="input-label">Altitude (m)</label>
+                            <input type="number" id="altitude" value="0" class="input-field" step="10">
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Altitude (m)</label>
-                            <input type="number" id="altitude" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                            <p class="text-xs text-gray-500 mt-1">Atmospheric pressure: <span id="pressure">101.325</span> kPa</p>
+                        <div class="input-group">
+                            <label class="input-label">Air Flow (m³/h)</label>
+                            <input type="number" id="airflow" value="1000" class="input-field" step="100">
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Air Flow (m³/h)</label>
-                            <input type="number" id="airflow" value="1000" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <div class="input-group">
+                            <label class="input-label">Mass Flow (kg/s)</label>
+                            <input type="number" id="massflow" value="" readonly class="input-field bg-gray-50">
+                            <p class="text-xs text-gray-500 mt-1">Calculated from air flow & density</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Initial Air State -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">🎯 Initial Air State</h2>
+                <!-- Initial State -->
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">🎯</span>
+                        <h2 class="section-title">Initial Air State</h2>
+                    </div>
 
                     <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Dry Bulb Temp (°C)</label>
-                            <input type="number" id="tdb" value="25" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <div class="input-group">
+                            <label class="input-label">Dry Bulb Temperature (°C)</label>
+                            <input type="number" id="tdb" value="25" step="0.1" class="input-field">
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Second Parameter</label>
-                            <select id="param-type" class="w-full px-3 py-2 border border-gray-300 rounded-md mb-2">
+                        <div class="input-group">
+                            <label class="input-label">Property Type</label>
+                            <select id="param-type" class="input-field">
                                 <option value="rh">Relative Humidity (%)</option>
-                                <option value="twb">Wet Bulb (°C)</option>
-                                <option value="tdew">Dew Point (°C)</option>
-                                <option value="w">Humidity Ratio (kg/kg)</option>
+                                <option value="twb">Wet Bulb Temp (°C)</option>
+                                <option value="tdew">Dew Point Temp (°C)</option>
+                                <option value="w">Humidity Ratio (g/kg)</option>
                                 <option value="h">Enthalpy (kJ/kg)</option>
                             </select>
-                            <input type="number" id="param-value" value="50" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
                         </div>
 
-                        <button onclick="calculateInitialState()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition">
-                            Calculate State
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Add Process -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">➕ Add Process</h2>
-
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Process Type</label>
-                            <select id="process-type" onchange="updateProcessInputs()" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                                <option value="heat">Sensible Heating</option>
-                                <option value="cool">Sensible Cooling</option>
-                                <option value="humidify">Humidification</option>
-                                <option value="dehumidify">Dehumidification</option>
-                                <option value="coolhumidify">Cooling + Humidification</option>
-                                <option value="cooldehumidify">Cooling + Dehumidification</option>
-                                <option value="mix">Mix Two Streams</option>
-                                <option value="custom">Custom Point</option>
-                            </select>
+                        <div class="input-group">
+                            <label class="input-label">Value</label>
+                            <input type="number" id="param-value" value="50" step="0.1" class="input-field">
                         </div>
 
-                        <div id="process-inputs" class="space-y-3">
-                            <!-- Dynamic inputs based on process type -->
-                        </div>
-
-                        <button onclick="addProcess()" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition">
-                            Add Process Step
+                        <button onclick="calculateInitialState()" class="btn btn-primary w-full">
+                            Calculate Initial State
                         </button>
                     </div>
                 </div>
 
                 <!-- Actions -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">💾 Actions</h2>
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">💾</span>
+                        <h2 class="section-title">Actions</h2>
+                    </div>
                     <div class="space-y-2">
-                        <button onclick="saveProject()" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition">
-                            Save Project
-                        </button>
-                        <button onclick="loadProject()" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition">
-                            Load Project
-                        </button>
-                        <button onclick="resetAll()" class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition">
-                            Reset All
-                        </button>
-                        <button onclick="exportData()" class="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition">
-                            Export JSON
-                        </button>
+                        <button onclick="saveProject()" class="btn btn-secondary w-full">Save Project</button>
+                        <button onclick="loadProject()" class="btn btn-secondary w-full">Load Project</button>
+                        <button onclick="exportData()" class="btn btn-secondary w-full">Export JSON</button>
+                        <button onclick="resetAll()" class="btn btn-danger w-full">Reset All</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Panel: Chart & Results -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Psychrometric Chart -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">📊 Psychrometric Chart</h2>
-                    <div class="chart-container">
-                        <svg id="chart" width="100%" height="600"></svg>
+            <!-- Center: Chart -->
+            <div class="xl:col-span-2 space-y-6">
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">📊</span>
+                        <h2 class="section-title">Mollier Diagram (h-x Chart)</h2>
+                        <div class="ml-auto flex gap-2">
+                            <span class="badge badge-info">Enthalpy (x-axis)</span>
+                            <span class="badge badge-success">Humidity Ratio (y-axis)</span>
+                        </div>
+                    </div>
+                    <div class="chart-container p-4">
+                        <svg id="chart" width="100%" height="700"></svg>
+                    </div>
+                </div>
+
+                <!-- Tables -->
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">📋</span>
+                        <h2 class="section-title">State Points</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Point</th>
+                                    <th class="text-left">T<sub>db</sub> (°C)</th>
+                                    <th class="text-left">T<sub>wb</sub> (°C)</th>
+                                    <th class="text-left">T<sub>dew</sub> (°C)</th>
+                                    <th class="text-left">RH (%)</th>
+                                    <th class="text-left">x (g/kg)</th>
+                                    <th class="text-left">h (kJ/kg)</th>
+                                    <th class="text-left">ρ (kg/m³)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="states-table" class="bg-white">
+                                <tr>
+                                    <td colspan="8" class="px-4 py-6 text-gray-500 italic text-center">No data available</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">📈</span>
+                        <h2 class="section-title">Process Changes & Load Calculations</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Process</th>
+                                    <th class="text-left">ΔT (°C)</th>
+                                    <th class="text-left">Δx (g/kg)</th>
+                                    <th class="text-left">Δh (kJ/kg)</th>
+                                    <th class="text-left">Q<sub>total</sub> (kW)</th>
+                                    <th class="text-left">Q<sub>sensible</sub> (kW)</th>
+                                    <th class="text-left">Q<sub>latent</sub> (kW)</th>
+                                    <th class="text-left">Water (kg/h)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="changes-table" class="bg-white">
+                                <tr>
+                                    <td colspan="8" class="px-4 py-6 text-gray-500 italic text-center">No processes added</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar: Process Management -->
+            <div class="xl:col-span-1 space-y-6">
+                <!-- Add Process -->
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">➕</span>
+                        <h2 class="section-title">Add Process</h2>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="input-group">
+                            <label class="input-label">Process Category</label>
+                            <select id="process-category" onchange="updateProcessTypes()" class="input-field">
+                                <option value="heating">🔥 Heating</option>
+                                <option value="cooling">❄️ Cooling</option>
+                                <option value="humidification">💧 Humidification</option>
+                                <option value="dehumidification">💨 Dehumidification</option>
+                                <option value="mixing">🔀 Mixing</option>
+                                <option value="other">⚡ Other</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label">Process Type</label>
+                            <select id="process-type" onchange="updateProcessInputs()" class="input-field">
+                                <!-- Options populated dynamically -->
+                            </select>
+                        </div>
+
+                        <div id="process-inputs" class="space-y-3">
+                            <!-- Dynamic inputs -->
+                        </div>
+
+                        <button onclick="addProcess()" class="btn btn-success w-full">
+                            Add Process Step
+                        </button>
                     </div>
                 </div>
 
                 <!-- Process List -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">🔄 Process Steps</h2>
-                    <div id="process-list" class="space-y-2">
-                        <p class="text-gray-500 italic">No processes added yet</p>
+                <div class="glass-card rounded-xl p-6">
+                    <div class="section-header">
+                        <span class="section-icon">🔄</span>
+                        <h2 class="section-title">Process Steps</h2>
+                        <span id="process-count" class="ml-auto badge badge-success">0</span>
                     </div>
-                </div>
-
-                <!-- State Points Table -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">📋 State Points</h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Point</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tdb (°C)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Twb (°C)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tdew (°C)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">RH (%)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">W (g/kg)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">H (kJ/kg)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ρ (kg/m³)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="states-table" class="bg-white divide-y divide-gray-200">
-                                <tr>
-                                    <td colspan="8" class="px-4 py-3 text-gray-500 italic text-center">No data available</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Process Changes Table -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">📈 Process Changes</h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Process</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ΔT (°C)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ΔRH (%)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ΔW (g/kg)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ΔH (kJ/kg)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Q (kW)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="changes-table" class="bg-white divide-y divide-gray-200">
-                                <tr>
-                                    <td colspan="6" class="px-4 py-3 text-gray-500 italic text-center">No processes added</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div id="process-list" class="space-y-2 max-h-96 overflow-y-auto">
+                        <p class="text-gray-500 italic text-center py-4">No processes added yet</p>
                     </div>
                 </div>
             </div>
