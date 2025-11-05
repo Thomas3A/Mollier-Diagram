@@ -597,7 +597,7 @@ function updateProcessList() {
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
                         <div class="font-semibold text-gray-800 mb-1">
-                            <span class="text-purple-600">${i}→${i+1}</span>: ${proc.name}
+                            <span class="text-green-600">${i}→${i+1}</span>: ${proc.name}
                         </div>
                         <div class="text-xs text-gray-600">
                             ΔT: ${(proc.end.Tdb - proc.start.Tdb).toFixed(1)}°C |
@@ -629,7 +629,7 @@ function updateTables() {
         states.forEach((state, i) => {
             html += `
                 <tr>
-                    <td class="px-4 py-3 font-bold text-purple-600">${i}</td>
+                    <td class="px-4 py-3 font-bold text-green-600">${i}</td>
                     <td class="px-4 py-3">${state.Tdb.toFixed(2)}</td>
                     <td class="px-4 py-3">${state.Twb.toFixed(2)}</td>
                     <td class="px-4 py-3">${state.Tdew.toFixed(2)}</td>
@@ -682,19 +682,19 @@ function updateTables() {
 }
 
 /**
- * Initialize the Mollier diagram chart (H vs x)
+ * Initialize the Psychrometric Chart (T vs x)
  */
 function initializeChart() {
     svg = d3.select('#chart');
     const container = document.querySelector('.chart-container');
     chartWidth = container.clientWidth - 100;
-    chartHeight = 700 - 100;
+    chartHeight = 720 - 120; // Increased top margin for x-axis
 
     svg.selectAll('*').remove();
 
-    // Create main group with margins
+    // Create main group with margins (extra top margin for x-axis)
     chartGroup = svg.append('g')
-        .attr('transform', 'translate(70, 30)');
+        .attr('transform', 'translate(70, 60)');
 
     // Add arrow marker for process lines
     svg.append('defs').append('marker')
@@ -729,16 +729,16 @@ function initializeChart() {
 }
 
 /**
- * Draw Mollier diagram background (H on x-axis, x on y-axis)
+ * Draw Psychrometric Chart background (T on y-axis, x on x-axis)
  */
 function drawChartBackground() {
-    // Define scales - Mollier diagram: x-axis = Enthalpy, y-axis = Humidity ratio
+    // Define scales - Psychrometric chart: x-axis = Humidity ratio, y-axis = Temperature
     xScale = d3.scaleLinear()
-        .domain([0, 120])  // Enthalpy range kJ/kg
+        .domain([0, 26])  // Humidity ratio range in g/kg
         .range([0, chartWidth]);
 
     yScale = d3.scaleLinear()
-        .domain([0, 0.030])  // Humidity ratio range kg/kg
+        .domain([-15, 40])  // Temperature range in °C
         .range([chartHeight, 0]);
 
     // Clear previous background
@@ -746,45 +746,79 @@ function drawChartBackground() {
 
     const bgLayer = chartGroup.append('g').attr('class', 'background-layer');
 
-    // Draw axes
-    const xAxis = d3.axisBottom(xScale).ticks(12);
-    const yAxis = d3.axisLeft(yScale).ticks(10).tickFormat(d => (d * 1000).toFixed(0));
+    // Draw gridlines
+    // Vertical gridlines (for humidity)
+    for (let x = 0; x <= 26; x += 2) {
+        bgLayer.append('line')
+            .attr('class', x % 10 === 0 ? 'grid-line-major' : 'grid-line')
+            .attr('x1', xScale(x))
+            .attr('y1', 0)
+            .attr('x2', xScale(x))
+            .attr('y2', chartHeight);
+    }
 
+    // Horizontal gridlines (for temperature)
+    for (let t = -15; t <= 40; t += 5) {
+        bgLayer.append('line')
+            .attr('class', t % 10 === 0 ? 'grid-line-major' : 'grid-line')
+            .attr('x1', 0)
+            .attr('y1', yScale(t))
+            .attr('x2', chartWidth)
+            .attr('y2', yScale(t));
+    }
+
+    // Draw axes
+    const xAxisTop = d3.axisTop(xScale).ticks(13);
+    const xAxisBottom = d3.axisBottom(xScale).ticks(13);
+    const yAxis = d3.axisLeft(yScale).ticks(11);
+
+    // X-axis on top
     bgLayer.append('g')
-        .attr('transform', `translate(0, ${chartHeight})`)
-        .call(xAxis)
-        .style('font-size', '12px')
+        .attr('transform', 'translate(0, 0)')
+        .call(xAxisTop)
+        .style('font-size', '11px')
+        .style('font-weight', '500')
         .append('text')
         .attr('x', chartWidth / 2)
-        .attr('y', 45)
-        .attr('fill', 'black')
+        .attr('y', -35)
+        .attr('fill', '#059669')
         .attr('text-anchor', 'middle')
         .attr('font-size', '14px')
-        .attr('font-weight', '600')
-        .text('Enthalpy h (kJ/kg)');
+        .attr('font-weight', '700')
+        .text('Absolute Humidity x (g/kg)');
 
+    // X-axis on bottom (for reference)
+    bgLayer.append('g')
+        .attr('transform', `translate(0, ${chartHeight})`)
+        .call(xAxisBottom)
+        .style('font-size', '11px')
+        .style('font-weight', '500');
+
+    // Y-axis on left
     bgLayer.append('g')
         .call(yAxis)
-        .style('font-size', '12px')
+        .style('font-size', '11px')
+        .style('font-weight', '500')
         .append('text')
         .attr('transform', 'rotate(-90)')
         .attr('x', -chartHeight / 2)
         .attr('y', -50)
-        .attr('fill', 'black')
+        .attr('fill', '#047857')
         .attr('text-anchor', 'middle')
         .attr('font-size', '14px')
-        .attr('font-weight', '600')
-        .text('Humidity Ratio x (g/kg)');
+        .attr('font-weight', '700')
+        .text('Dry Bulb Temperature (°C)');
 
     // Draw RH curves
     const rhValues = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
     rhValues.forEach(rh => {
         const points = [];
-        for (let t = -10; t <= 50; t += 0.5) {
+        for (let t = -15; t <= 40; t += 0.5) {
             try {
                 const state = psychro.fromTdbRH(t, rh);
-                if (state.H >= 0 && state.H <= 120 && state.W >= 0 && state.W <= 0.030) {
-                    points.push([state.H, state.W]);
+                const xVal = state.W * 1000; // Convert to g/kg
+                if (xVal >= 0 && xVal <= 26) {
+                    points.push([xVal, t]);
                 }
             } catch(e) {}
         }
@@ -802,32 +836,33 @@ function drawChartBackground() {
 
             // Label
             if (points.length > 2) {
-                const labelPoint = points[Math.floor(points.length * 0.7)];
+                const labelPoint = points[Math.floor(points.length * 0.8)];
                 bgLayer.append('text')
-                    .attr('x', xScale(labelPoint[0]))
-                    .attr('y', yScale(labelPoint[1]) - 5)
+                    .attr('x', xScale(labelPoint[0]) + 3)
+                    .attr('y', yScale(labelPoint[1]))
                     .attr('font-size', '11px')
                     .attr('font-weight', '600')
-                    .attr('fill', rh === 100 ? '#1e40af' : '#3b82f6')
+                    .attr('fill', rh === 100 ? '#047857' : '#10b981')
                     .text(`${rh}%`);
             }
         }
     });
 
-    // Draw constant temperature lines
-    const tempValues = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
-    tempValues.forEach(temp => {
+    // Draw constant enthalpy lines (diagonal)
+    const enthalpyValues = [20, 30, 40, 50, 60, 70, 80, 90];
+    enthalpyValues.forEach(h => {
         const points = [];
-        for (let rh = 0; rh <= 100; rh += 5) {
+        for (let t = -15; t <= 40; t += 1) {
             try {
-                const state = psychro.fromTdbRH(temp, rh);
-                if (state.H >= 0 && state.H <= 120 && state.W >= 0 && state.W <= 0.030) {
-                    points.push([state.H, state.W]);
+                const state = psychro.fromTdbH(t, h);
+                const xVal = state.W * 1000;
+                if (xVal >= 0 && xVal <= 26 && state.RH <= 100) {
+                    points.push([xVal, t]);
                 }
             } catch(e) {}
         }
 
-        if (points.length > 1) {
+        if (points.length > 2) {
             const line = d3.line()
                 .x(d => xScale(d[0]))
                 .y(d => yScale(d[1]));
@@ -835,16 +870,21 @@ function drawChartBackground() {
             bgLayer.append('path')
                 .datum(points)
                 .attr('class', 'temp-line')
-                .attr('d', line);
+                .attr('d', line)
+                .attr('stroke', '#94a3af')
+                .attr('opacity', 0.25);
 
-            // Label
-            const lastPoint = points[points.length - 1];
-            bgLayer.append('text')
-                .attr('x', xScale(lastPoint[0]) + 5)
-                .attr('y', yScale(lastPoint[1]))
-                .attr('font-size', '10px')
-                .attr('fill', '#ef4444')
-                .text(`${temp}°C`);
+            // Label at the last point
+            const lastPoint = points[Math.floor(points.length * 0.9)];
+            if (lastPoint) {
+                bgLayer.append('text')
+                    .attr('x', xScale(lastPoint[0]) + 2)
+                    .attr('y', yScale(lastPoint[1]) - 2)
+                    .attr('font-size', '9px')
+                    .attr('fill', '#6b7280')
+                    .attr('opacity', 0.6)
+                    .text(`${h}kJ/kg`);
+            }
         }
     });
 
@@ -856,7 +896,8 @@ function drawChartBackground() {
 
     comfortConditions.forEach(([t, rh]) => {
         const state = psychro.fromTdbRH(t, rh);
-        comfortPoints.push([state.H, state.W]);
+        const xVal = state.W * 1000; // Convert to g/kg
+        comfortPoints.push([xVal, t]);
     });
 
     bgLayer.append('polygon')
@@ -864,11 +905,11 @@ function drawChartBackground() {
         .attr('points', comfortPoints.map(p => `${xScale(p[0])},${yScale(p[1])}`).join(' '));
 
     // Comfort zone label
-    const centerH = (comfortPoints[0][0] + comfortPoints[2][0]) / 2;
-    const centerW = (comfortPoints[0][1] + comfortPoints[2][1]) / 2;
+    const centerX = (comfortPoints[0][0] + comfortPoints[2][0]) / 2;
+    const centerT = (comfortPoints[0][1] + comfortPoints[2][1]) / 2;
     bgLayer.append('text')
-        .attr('x', xScale(centerH))
-        .attr('y', yScale(centerW))
+        .attr('x', xScale(centerX))
+        .attr('y', yScale(centerT))
         .attr('text-anchor', 'middle')
         .attr('font-size', '12px')
         .attr('font-weight', '600')
@@ -889,33 +930,40 @@ function updateChart() {
 
     // Draw process lines
     processes.forEach((proc, i) => {
+        const x1 = proc.start.W * 1000; // Convert to g/kg
+        const y1 = proc.start.Tdb;
+        const x2 = proc.end.W * 1000; // Convert to g/kg
+        const y2 = proc.end.Tdb;
+
         dataLayer.append('line')
             .attr('class', 'process-line')
-            .attr('x1', xScale(proc.start.H))
-            .attr('y1', yScale(proc.start.W))
-            .attr('x2', xScale(proc.end.H))
-            .attr('y2', yScale(proc.end.W));
+            .attr('x1', xScale(x1))
+            .attr('y1', yScale(y1))
+            .attr('x2', xScale(x2))
+            .attr('y2', yScale(y2));
     });
 
     // Draw state points
     states.forEach((state, i) => {
         const group = dataLayer.append('g');
+        const xVal = state.W * 1000; // Convert to g/kg
+        const yVal = state.Tdb;
 
         group.append('circle')
             .attr('class', 'state-point')
-            .attr('cx', xScale(state.H))
-            .attr('cy', yScale(state.W))
+            .attr('cx', xScale(xVal))
+            .attr('cy', yScale(yVal))
             .attr('r', 7)
             .append('title')
-            .text(`Point ${i}: ${state.Tdb.toFixed(1)}°C, ${state.RH.toFixed(0)}%RH`);
+            .text(`Point ${i}: ${state.Tdb.toFixed(1)}°C, ${(state.W*1000).toFixed(1)}g/kg, ${state.RH.toFixed(0)}%RH`);
 
         group.append('text')
-            .attr('x', xScale(state.H))
-            .attr('y', yScale(state.W) - 15)
+            .attr('x', xScale(xVal))
+            .attr('y', yScale(yVal) - 15)
             .attr('text-anchor', 'middle')
             .attr('font-weight', 'bold')
             .attr('font-size', '14px')
-            .attr('fill', '#dc2626')
+            .attr('fill', '#059669')
             .attr('stroke', 'white')
             .attr('stroke-width', '3')
             .attr('paint-order', 'stroke')
