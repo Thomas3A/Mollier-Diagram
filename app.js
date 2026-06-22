@@ -1,5 +1,5 @@
 /**
- * Main Application Logic
+ * Main Application Logic - Mollier Diagram Version
  * Handles UI, state management, processes, and chart visualization
  */
 
@@ -8,18 +8,57 @@ let states = [];
 let processes = [];
 let currentAltitude = 0;
 let currentAirflow = 1000;
+let currentMassFlow = 0;
 
 // Chart dimensions and scales
 let chartWidth, chartHeight, xScale, yScale;
 let svg, chartGroup;
 
+// Process type definitions by category
+const processCategories = {
+    heating: [
+        { value: 'heat-to-temp', label: 'Heat to Temperature' },
+        { value: 'heat-by-delta', label: 'Heat by ΔT' },
+        { value: 'heat-by-power', label: 'Heat by Power (kW)' },
+        { value: 'heat-to-enthalpy', label: 'Heat to Enthalpy' }
+    ],
+    cooling: [
+        { value: 'cool-to-temp', label: 'Cool to Temperature' },
+        { value: 'cool-by-delta', label: 'Cool by ΔT' },
+        { value: 'cool-by-power', label: 'Cool by Power (kW)' },
+        { value: 'cool-dehumid', label: 'Cool & Dehumidify' }
+    ],
+    humidification: [
+        { value: 'humid-adiabatic', label: 'Adiabatic Humidification' },
+        { value: 'humid-steam', label: 'Steam Humidification' },
+        { value: 'humid-to-rh', label: 'Humidify to RH' },
+        { value: 'humid-by-delta-x', label: 'Humidify by Δx' },
+        { value: 'humid-by-water-flow', label: 'Humidify by Water Flow' }
+    ],
+    dehumidification: [
+        { value: 'dehumid-to-rh', label: 'Dehumidify to RH' },
+        { value: 'dehumid-by-delta-x', label: 'Dehumidify by Δx' },
+        { value: 'dehumid-by-water-flow', label: 'Dehumidify by Water Removal' }
+    ],
+    mixing: [
+        { value: 'mix-streams', label: 'Mix Two Air Streams' },
+        { value: 'mix-ratio', label: 'Mix by Mass Ratio' }
+    ],
+    other: [
+        { value: 'custom-point', label: 'Custom Point' },
+        { value: 'heat-recovery', label: 'Heat Recovery' }
+    ]
+};
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initializeChart();
+    updateProcessTypes(); // Initialize process types
     updateProcessInputs();
 
     // Event listeners
     document.getElementById('altitude').addEventListener('input', updatePressure);
+    document.getElementById('airflow').addEventListener('input', updateMassFlow);
 
     // Load saved project if exists
     if (localStorage.getItem('psychro-project')) {
@@ -40,13 +79,43 @@ function updatePressure() {
 }
 
 /**
+ * Update mass flow rate based on airflow and density
+ */
+function updateMassFlow() {
+    currentAirflow = parseFloat(document.getElementById('airflow').value) || 1000;
+    if (states.length > 0) {
+        const lastState = states[states.length - 1];
+        currentMassFlow = (currentAirflow / 3600) * lastState.rho;
+        document.getElementById('massflow').value = currentMassFlow.toFixed(3);
+    }
+}
+
+/**
+ * Update process types dropdown based on selected category
+ */
+function updateProcessTypes() {
+    const category = document.getElementById('process-category').value;
+    const processTypeSelect = document.getElementById('process-type');
+
+    processTypeSelect.innerHTML = '';
+    processCategories[category].forEach(proc => {
+        const option = document.createElement('option');
+        option.value = proc.value;
+        option.textContent = proc.label;
+        processTypeSelect.appendChild(option);
+    });
+
+    updateProcessInputs();
+}
+
+/**
  * Calculate initial air state
  */
 function calculateInitialState() {
     try {
         const Tdb = parseFloat(document.getElementById('tdb').value);
         const paramType = document.getElementById('param-type').value;
-        const paramValue = parseFloat(document.getElementById('param-value').value);
+        let paramValue = parseFloat(document.getElementById('param-value').value);
 
         updatePressure();
 
@@ -62,7 +131,8 @@ function calculateInitialState() {
                 state = psychro.fromTdbTdew(Tdb, paramValue);
                 break;
             case 'w':
-                state = psychro.fromTdbW(Tdb, paramValue);
+                // Convert g/kg to kg/kg
+                state = psychro.fromTdbW(Tdb, paramValue / 1000);
                 break;
             case 'h':
                 state = psychro.fromTdbH(Tdb, paramValue);
@@ -73,6 +143,7 @@ function calculateInitialState() {
         states = [state];
         processes = [];
 
+        updateMassFlow();
         updateChart();
         updateTables();
         updateProcessList();
@@ -92,73 +163,201 @@ function updateProcessInputs() {
     let html = '';
 
     switch(processType) {
-        case 'heat':
-        case 'cool':
+        case 'heat-to-temp':
             html = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Temperature (°C)</label>
-                    <input type="number" id="target-temp" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <div class="input-group">
+                    <label class="input-label">Target Temperature (°C)</label>
+                    <input type="number" id="target-temp" step="0.1" class="input-field" placeholder="e.g., 30">
                 </div>
             `;
             break;
 
-        case 'humidify':
-        case 'dehumidify':
+        case 'heat-by-delta':
             html = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Type</label>
-                    <select id="target-type" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                        <option value="rh">Relative Humidity (%)</option>
-                        <option value="w">Humidity Ratio (kg/kg)</option>
+                <div class="input-group">
+                    <label class="input-label">Temperature Increase ΔT (K)</label>
+                    <input type="number" id="delta-temp" step="0.1" class="input-field" placeholder="e.g., 10">
+                </div>
+            `;
+            break;
+
+        case 'heat-by-power':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Heating Power (kW)</label>
+                    <input type="number" id="heating-power" step="0.1" class="input-field" placeholder="e.g., 15">
+                </div>
+            `;
+            break;
+
+        case 'heat-to-enthalpy':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Target Enthalpy (kJ/kg)</label>
+                    <input type="number" id="target-enthalpy" step="0.1" class="input-field" placeholder="e.g., 60">
+                </div>
+            `;
+            break;
+
+        case 'cool-to-temp':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Target Temperature (°C)</label>
+                    <input type="number" id="target-temp" step="0.1" class="input-field" placeholder="e.g., 15">
+                </div>
+            `;
+            break;
+
+        case 'cool-by-delta':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Temperature Decrease ΔT (K)</label>
+                    <input type="number" id="delta-temp" step="0.1" class="input-field" placeholder="e.g., 10">
+                </div>
+            `;
+            break;
+
+        case 'cool-by-power':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Cooling Power (kW)</label>
+                    <input type="number" id="cooling-power" step="0.1" class="input-field" placeholder="e.g., 20">
+                </div>
+            `;
+            break;
+
+        case 'cool-dehumid':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Target Temperature (°C)</label>
+                    <input type="number" id="target-temp" step="0.1" class="input-field" placeholder="e.g., 12">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Target RH (%)</label>
+                    <input type="number" id="target-rh" step="0.1" class="input-field" placeholder="e.g., 95">
+                </div>
+            `;
+            break;
+
+        case 'humid-adiabatic':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Target RH (%) or Target x (g/kg)</label>
+                    <select id="humid-target-type" class="input-field mb-2">
+                        <option value="rh">Target RH (%)</option>
+                        <option value="x">Target x (g/kg)</option>
                     </select>
+                    <input type="number" id="humid-target" step="0.1" class="input-field" placeholder="e.g., 80">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Value</label>
-                    <input type="number" id="target-value" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <p class="text-xs text-gray-600">Constant enthalpy (evaporative cooling)</p>
+            `;
+            break;
+
+        case 'humid-steam':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Target RH (%) or Target x (g/kg)</label>
+                    <select id="humid-target-type" class="input-field mb-2">
+                        <option value="rh">Target RH (%)</option>
+                        <option value="x">Target x (g/kg)</option>
+                    </select>
+                    <input type="number" id="humid-target" step="0.1" class="input-field" placeholder="e.g., 60">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Steam Temperature (°C)</label>
+                    <input type="number" id="steam-temp" value="100" step="0.1" class="input-field">
                 </div>
             `;
             break;
 
-        case 'coolhumidify':
-        case 'cooldehumidify':
+        case 'humid-to-rh':
             html = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Temperature (°C)</label>
-                    <input type="number" id="target-temp" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Target RH (%)</label>
-                    <input type="number" id="target-rh" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <div class="input-group">
+                    <label class="input-label">Target RH (%)</label>
+                    <input type="number" id="target-rh" step="0.1" class="input-field" placeholder="e.g., 60">
                 </div>
             `;
             break;
 
-        case 'mix':
+        case 'humid-by-delta-x':
             html = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Stream 2 - Tdb (°C)</label>
-                    <input type="number" id="mix-tdb" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <div class="input-group">
+                    <label class="input-label">Humidity Ratio Increase Δx (g/kg)</label>
+                    <input type="number" id="delta-x" step="0.1" class="input-field" placeholder="e.g., 2">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Stream 2 - RH (%)</label>
-                    <input type="number" id="mix-rh" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Mass Ratio (m1/m2)</label>
-                    <input type="number" id="mix-ratio" value="1" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <div class="input-group">
+                    <label class="input-label">Water Temperature (°C)</label>
+                    <input type="number" id="water-temp" value="20" step="0.1" class="input-field">
                 </div>
             `;
             break;
 
-        case 'custom':
+        case 'humid-by-water-flow':
             html = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Dry Bulb (°C)</label>
-                    <input type="number" id="custom-tdb" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <div class="input-group">
+                    <label class="input-label">Water Flow Rate (kg/h)</label>
+                    <input type="number" id="water-flow" step="0.1" class="input-field" placeholder="e.g., 5">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">RH (%)</label>
-                    <input type="number" id="custom-rh" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <div class="input-group">
+                    <label class="input-label">Water Temperature (°C)</label>
+                    <input type="number" id="water-temp" value="20" step="0.1" class="input-field">
+                </div>
+            `;
+            break;
+
+        case 'dehumid-to-rh':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Target RH (%)</label>
+                    <input type="number" id="target-rh" step="0.1" class="input-field" placeholder="e.g., 40">
+                </div>
+            `;
+            break;
+
+        case 'dehumid-by-delta-x':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Humidity Ratio Decrease Δx (g/kg)</label>
+                    <input type="number" id="delta-x" step="0.1" class="input-field" placeholder="e.g., 3">
+                </div>
+            `;
+            break;
+
+        case 'dehumid-by-water-flow':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Water Removal Rate (kg/h)</label>
+                    <input type="number" id="water-flow" step="0.1" class="input-field" placeholder="e.g., 4">
+                </div>
+            `;
+            break;
+
+        case 'mix-streams':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Stream 2 - Temperature (°C)</label>
+                    <input type="number" id="mix-temp" step="0.1" class="input-field" placeholder="e.g., 10">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Stream 2 - RH (%)</label>
+                    <input type="number" id="mix-rh" step="0.1" class="input-field" placeholder="e.g., 90">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Mass Flow Ratio (m1:m2)</label>
+                    <input type="number" id="mix-ratio" value="1" step="0.1" class="input-field">
+                </div>
+            `;
+            break;
+
+        case 'custom-point':
+            html = `
+                <div class="input-group">
+                    <label class="input-label">Temperature (°C)</label>
+                    <input type="number" id="custom-temp" step="0.1" class="input-field" placeholder="e.g., 22">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">RH (%)</label>
+                    <input type="number" id="custom-rh" step="0.1" class="input-field" placeholder="e.g., 50">
                 </div>
             `;
             break;
@@ -179,84 +378,189 @@ function addProcess() {
     try {
         const processType = document.getElementById('process-type').value;
         const currentState = states[states.length - 1];
-        let newState, processName;
+        let newState, processName, waterFlow = 0;
+
+        // Update mass flow
+        currentMassFlow = (currentAirflow / 3600) * currentState.rho;
 
         switch(processType) {
-            case 'heat':
-                const heatTemp = parseFloat(document.getElementById('target-temp').value);
-                if (heatTemp <= currentState.Tdb) {
-                    alert('Target temperature must be higher than current temperature for heating');
+            case 'heat-to-temp':
+                const targetTemp = parseFloat(document.getElementById('target-temp').value);
+                if (targetTemp <= currentState.Tdb) {
+                    alert('Target temperature must be higher than current temperature');
                     return;
                 }
-                newState = psychro.sensibleHeating(currentState, heatTemp);
-                processName = `Heat to ${heatTemp}°C`;
+                newState = psychro.sensibleHeating(currentState, targetTemp);
+                processName = `Heat to ${targetTemp}°C`;
                 break;
 
-            case 'cool':
+            case 'heat-by-delta':
+                const deltaT = parseFloat(document.getElementById('delta-temp').value);
+                newState = psychro.sensibleHeating(currentState, currentState.Tdb + deltaT);
+                processName = `Heat by ΔT = ${deltaT}K`;
+                break;
+
+            case 'heat-by-power':
+                const power = parseFloat(document.getElementById('heating-power').value);
+                const deltaH = power / currentMassFlow;
+                newState = psychro.fromTdbH(currentState.Tdb + deltaH / 1.006, currentState.H + deltaH);
+                processName = `Heat with ${power}kW`;
+                break;
+
+            case 'heat-to-enthalpy':
+                const targetH = parseFloat(document.getElementById('target-enthalpy').value);
+                const newT = (targetH - currentState.W * 2501) / (1.006 + currentState.W * 1.86);
+                newState = psychro.fromTdbW(newT, currentState.W);
+                processName = `Heat to h = ${targetH}kJ/kg`;
+                break;
+
+            case 'cool-to-temp':
                 const coolTemp = parseFloat(document.getElementById('target-temp').value);
                 if (coolTemp >= currentState.Tdb) {
-                    alert('Target temperature must be lower than current temperature for cooling');
+                    alert('Target temperature must be lower than current temperature');
                     return;
                 }
                 newState = psychro.sensibleCooling(currentState, coolTemp);
                 processName = `Cool to ${coolTemp}°C`;
+                if (newState.RH > 99) {
+                    waterFlow = (currentState.W - newState.W) * currentMassFlow * 3600;
+                }
                 break;
 
-            case 'humidify':
-                const humidType = document.getElementById('target-type').value;
-                const humidValue = parseFloat(document.getElementById('target-value').value);
-                newState = psychro.humidification(currentState, humidValue, humidType);
-                processName = `Humidify to ${humidValue}${humidType === 'rh' ? '%' : ' kg/kg'}`;
+            case 'cool-by-delta':
+                const coolDelta = parseFloat(document.getElementById('delta-temp').value);
+                newState = psychro.sensibleCooling(currentState, currentState.Tdb - coolDelta);
+                processName = `Cool by ΔT = ${coolDelta}K`;
+                if (newState.RH > 99) {
+                    waterFlow = (currentState.W - newState.W) * currentMassFlow * 3600;
+                }
                 break;
 
-            case 'dehumidify':
-                const dehumidType = document.getElementById('target-type').value;
-                const dehumidValue = parseFloat(document.getElementById('target-value').value);
-                newState = psychro.humidification(currentState, dehumidValue, dehumidType);
-                processName = `Dehumidify to ${dehumidValue}${dehumidType === 'rh' ? '%' : ' kg/kg'}`;
+            case 'cool-by-power':
+                const coolPower = parseFloat(document.getElementById('cooling-power').value);
+                const coolDeltaH = -coolPower / currentMassFlow;
+                const coolNewT = (currentState.H + coolDeltaH - currentState.W * 2501) / (1.006 + currentState.W * 1.86);
+                newState = psychro.sensibleCooling(currentState, coolNewT);
+                processName = `Cool with ${coolPower}kW`;
+                if (newState.RH > 99) {
+                    waterFlow = (currentState.W - newState.W) * currentMassFlow * 3600;
+                }
                 break;
 
-            case 'coolhumidify':
-            case 'cooldehumidify':
+            case 'cool-dehumid':
                 const cdTemp = parseFloat(document.getElementById('target-temp').value);
                 const cdRH = parseFloat(document.getElementById('target-rh').value);
                 newState = psychro.coolingDehumidification(currentState, cdTemp, cdRH);
-                processName = `Cool to ${cdTemp}°C, ${cdRH}% RH`;
+                processName = `Cool & Dehumid to ${cdTemp}°C, ${cdRH}%RH`;
+                waterFlow = (currentState.W - newState.W) * currentMassFlow * 3600;
                 break;
 
-            case 'mix':
-                const mixTdb = parseFloat(document.getElementById('mix-tdb').value);
+            case 'humid-adiabatic':
+                const adiabaticType = document.getElementById('humid-target-type').value;
+                const adiabaticTarget = parseFloat(document.getElementById('humid-target').value);
+                newState = psychro.adiabaticHumidification(currentState, adiabaticTarget, adiabaticType);
+                processName = `Adiabatic humidification to ${adiabaticTarget}${adiabaticType === 'rh' ? '%' : 'g/kg'}`;
+                waterFlow = (newState.W - currentState.W) * currentMassFlow * 3600;
+                break;
+
+            case 'humid-steam':
+                const steamType = document.getElementById('humid-target-type').value;
+                const steamTarget = parseFloat(document.getElementById('humid-target').value);
+                const steamTemp = parseFloat(document.getElementById('steam-temp').value);
+                newState = psychro.steamHumidification(currentState, steamTarget, steamType, steamTemp);
+                processName = `Steam humidification to ${steamTarget}${steamType === 'rh' ? '%' : 'g/kg'}`;
+                waterFlow = (newState.W - currentState.W) * currentMassFlow * 3600;
+                break;
+
+            case 'humid-to-rh':
+                const targetRH = parseFloat(document.getElementById('target-rh').value);
+                newState = psychro.fromTdbRH(currentState.Tdb, targetRH);
+                processName = `Humidify to ${targetRH}%RH`;
+                waterFlow = (newState.W - currentState.W) * currentMassFlow * 3600;
+                break;
+
+            case 'humid-by-delta-x':
+                const deltaX = parseFloat(document.getElementById('delta-x').value) / 1000;
+                const waterTemp = parseFloat(document.getElementById('water-temp').value);
+                newState = psychro.humidifyByDeltaX(currentState, deltaX, waterTemp);
+                processName = `Humidify by Δx = ${(deltaX * 1000).toFixed(2)}g/kg`;
+                waterFlow = deltaX * currentMassFlow * 3600;
+                break;
+
+            case 'humid-by-water-flow':
+                const waterFlowRate = parseFloat(document.getElementById('water-flow').value);
+                const waterTempFlow = parseFloat(document.getElementById('water-temp').value);
+                const deltaXFlow = (waterFlowRate / 3600) / currentMassFlow;
+                newState = psychro.humidifyByDeltaX(currentState, deltaXFlow, waterTempFlow);
+                processName = `Humidify with ${waterFlowRate}kg/h water`;
+                waterFlow = waterFlowRate;
+                break;
+
+            case 'dehumid-to-rh':
+                const dehumidRH = parseFloat(document.getElementById('target-rh').value);
+                newState = psychro.fromTdbRH(currentState.Tdb, dehumidRH);
+                processName = `Dehumidify to ${dehumidRH}%RH`;
+                waterFlow = (currentState.W - newState.W) * currentMassFlow * 3600;
+                break;
+
+            case 'dehumid-by-delta-x':
+                const dehumidDeltaX = parseFloat(document.getElementById('delta-x').value) / 1000;
+                newState = psychro.fromTdbW(currentState.Tdb, currentState.W - dehumidDeltaX);
+                processName = `Dehumidify by Δx = ${(dehumidDeltaX * 1000).toFixed(2)}g/kg`;
+                waterFlow = dehumidDeltaX * currentMassFlow * 3600;
+                break;
+
+            case 'dehumid-by-water-flow':
+                const dehumidWaterFlow = parseFloat(document.getElementById('water-flow').value);
+                const dehumidDeltaXFlow = (dehumidWaterFlow / 3600) / currentMassFlow;
+                newState = psychro.fromTdbW(currentState.Tdb, currentState.W - dehumidDeltaXFlow);
+                processName = `Dehumidify removing ${dehumidWaterFlow}kg/h water`;
+                waterFlow = dehumidWaterFlow;
+                break;
+
+            case 'mix-streams':
+                const mixTemp = parseFloat(document.getElementById('mix-temp').value);
                 const mixRH = parseFloat(document.getElementById('mix-rh').value);
                 const mixRatio = parseFloat(document.getElementById('mix-ratio').value);
-                const stream2 = psychro.fromTdbRH(mixTdb, mixRH);
+                const stream2 = psychro.fromTdbRH(mixTemp, mixRH);
                 newState = psychro.mixAirStreams(currentState, mixRatio, stream2, 1);
-                processName = `Mix with ${mixTdb}°C, ${mixRH}% RH (ratio ${mixRatio}:1)`;
+                processName = `Mix with ${mixTemp}°C, ${mixRH}%RH (${mixRatio}:1)`;
                 break;
 
-            case 'custom':
-                const customTdb = parseFloat(document.getElementById('custom-tdb').value);
+            case 'custom-point':
+                const customTemp = parseFloat(document.getElementById('custom-temp').value);
                 const customRH = parseFloat(document.getElementById('custom-rh').value);
-                newState = psychro.fromTdbRH(customTdb, customRH);
-                processName = `Custom point: ${customTdb}°C, ${customRH}% RH`;
+                newState = psychro.fromTdbRH(customTemp, customRH);
+                processName = `Custom: ${customTemp}°C, ${customRH}%RH`;
                 break;
+
+            default:
+                alert('Process type not implemented yet');
+                return;
         }
+
+        // Store water flow information
+        newState.waterFlow = waterFlow;
 
         // Add process and new state
         processes.push({
             type: processType,
             name: processName,
             start: currentState,
-            end: newState
+            end: newState,
+            waterFlow: waterFlow
         });
 
         states.push(newState);
 
+        updateMassFlow();
         updateChart();
         updateTables();
         updateProcessList();
 
     } catch(error) {
         alert('Error adding process: ' + error.message);
+        console.error(error);
     }
 }
 
@@ -277,23 +581,33 @@ function removeProcess(index) {
  */
 function updateProcessList() {
     const listDiv = document.getElementById('process-list');
+    const countBadge = document.getElementById('process-count');
+
+    countBadge.textContent = processes.length;
 
     if (processes.length === 0) {
-        listDiv.innerHTML = '<p class="text-gray-500 italic">No processes added yet</p>';
+        listDiv.innerHTML = '<p class="text-gray-500 italic text-center py-4">No processes added yet</p>';
         return;
     }
 
     let html = '';
     processes.forEach((proc, i) => {
         html += `
-            <div class="flex items-center justify-between bg-gray-50 p-3 rounded-md">
-                <div>
-                    <span class="font-semibold text-gray-700">${i + 1}.</span>
-                    <span class="text-gray-800">${proc.name}</span>
+            <div class="process-card">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="font-semibold text-gray-800 mb-1">
+                            <span class="text-purple-600">${i}→${i+1}</span>: ${proc.name}
+                        </div>
+                        <div class="text-xs text-gray-600">
+                            ΔT: ${(proc.end.Tdb - proc.start.Tdb).toFixed(1)}°C |
+                            Δx: ${((proc.end.W - proc.start.W) * 1000).toFixed(2)}g/kg
+                        </div>
+                    </div>
+                    <button onclick="removeProcess(${i})" class="text-red-600 hover:text-red-800 font-semibold ml-2">
+                        ✕
+                    </button>
                 </div>
-                <button onclick="removeProcess(${i})" class="text-red-600 hover:text-red-800 font-semibold">
-                    Remove
-                </button>
             </div>
         `;
     });
@@ -309,13 +623,13 @@ function updateTables() {
     const statesTableBody = document.getElementById('states-table');
 
     if (states.length === 0) {
-        statesTableBody.innerHTML = '<tr><td colspan="8" class="px-4 py-3 text-gray-500 italic text-center">No data available</td></tr>';
+        statesTableBody.innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-gray-500 italic text-center">No data available</td></tr>';
     } else {
         let html = '';
         states.forEach((state, i) => {
             html += `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 font-semibold">${i}</td>
+                <tr>
+                    <td class="px-4 py-3 font-bold text-purple-600">${i}</td>
                     <td class="px-4 py-3">${state.Tdb.toFixed(2)}</td>
                     <td class="px-4 py-3">${state.Twb.toFixed(2)}</td>
                     <td class="px-4 py-3">${state.Tdew.toFixed(2)}</td>
@@ -333,29 +647,33 @@ function updateTables() {
     const changesTableBody = document.getElementById('changes-table');
 
     if (processes.length === 0) {
-        changesTableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-3 text-gray-500 italic text-center">No processes added</td></tr>';
+        changesTableBody.innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-gray-500 italic text-center">No processes added</td></tr>';
     } else {
         let html = '';
-        const airflow = parseFloat(document.getElementById('airflow').value) || 1000;
 
         processes.forEach((proc, i) => {
             const deltaT = proc.end.Tdb - proc.start.Tdb;
-            const deltaRH = proc.end.RH - proc.start.RH;
-            const deltaW = proc.end.W - proc.start.W;
+            const deltaX = proc.end.W - proc.start.W;
             const deltaH = proc.end.H - proc.start.H;
 
-            // Calculate mass flow rate
-            const massFlow = (airflow / 3600) * proc.start.rho; // kg/s
-            const Q = deltaH * massFlow; // kW
+            // Calculate mass flow rate for this process
+            const massFlow = (currentAirflow / 3600) * proc.start.rho;
+            const Qtotal = deltaH * massFlow;
+            const Qsensible = 1.006 * deltaT * massFlow;
+            const Qlatent = Qtotal - Qsensible;
+
+            const waterFlow = proc.waterFlow || 0;
 
             html += `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 font-semibold">${i}→${i+1}: ${proc.name}</td>
-                    <td class="px-4 py-3">${deltaT.toFixed(2)}</td>
-                    <td class="px-4 py-3">${deltaRH.toFixed(1)}</td>
-                    <td class="px-4 py-3">${(deltaW * 1000).toFixed(2)}</td>
-                    <td class="px-4 py-3">${deltaH.toFixed(2)}</td>
-                    <td class="px-4 py-3 ${Q >= 0 ? 'text-red-600' : 'text-blue-600'}">${Q.toFixed(2)}</td>
+                <tr>
+                    <td class="px-4 py-3 font-semibold text-gray-700">${i}→${i+1}: ${proc.name}</td>
+                    <td class="px-4 py-3 ${deltaT >= 0 ? 'text-red-600' : 'text-blue-600'}">${deltaT >= 0 ? '+' : ''}${deltaT.toFixed(2)}</td>
+                    <td class="px-4 py-3 ${deltaX >= 0 ? 'text-blue-600' : 'text-orange-600'}">${deltaX >= 0 ? '+' : ''}${(deltaX * 1000).toFixed(2)}</td>
+                    <td class="px-4 py-3 ${deltaH >= 0 ? 'text-red-600' : 'text-blue-600'}">${deltaH >= 0 ? '+' : ''}${deltaH.toFixed(2)}</td>
+                    <td class="px-4 py-3 font-semibold ${Qtotal >= 0 ? 'text-red-600' : 'text-blue-600'}">${Qtotal >= 0 ? '+' : ''}${Qtotal.toFixed(2)}</td>
+                    <td class="px-4 py-3 ${Qsensible >= 0 ? 'text-red-600' : 'text-blue-600'}">${Qsensible >= 0 ? '+' : ''}${Qsensible.toFixed(2)}</td>
+                    <td class="px-4 py-3 ${Qlatent >= 0 ? 'text-red-600' : 'text-blue-600'}">${Qlatent >= 0 ? '+' : ''}${Qlatent.toFixed(2)}</td>
+                    <td class="px-4 py-3 ${waterFlow >= 0 ? 'text-blue-600' : 'text-orange-600'}">${waterFlow >= 0 ? '+' : ''}${waterFlow.toFixed(2)}</td>
                 </tr>
             `;
         });
@@ -364,46 +682,63 @@ function updateTables() {
 }
 
 /**
- * Initialize the psychrometric chart
+ * Initialize the Mollier diagram chart (H vs x)
  */
 function initializeChart() {
     svg = d3.select('#chart');
     const container = document.querySelector('.chart-container');
-    chartWidth = container.clientWidth - 80;
-    chartHeight = 600 - 80;
+    chartWidth = container.clientWidth - 100;
+    chartHeight = 700 - 100;
 
     svg.selectAll('*').remove();
 
     // Create main group with margins
     chartGroup = svg.append('g')
-        .attr('transform', 'translate(60, 20)');
+        .attr('transform', 'translate(70, 30)');
 
     // Add arrow marker for process lines
     svg.append('defs').append('marker')
         .attr('id', 'arrowhead')
-        .attr('markerWidth', 10)
-        .attr('markerHeight', 10)
-        .attr('refX', 9)
-        .attr('refY', 3)
+        .attr('markerWidth', 12)
+        .attr('markerHeight', 12)
+        .attr('refX', 11)
+        .attr('refY', 4)
         .attr('orient', 'auto')
         .append('polygon')
-        .attr('points', '0 0, 10 3, 0 6')
+        .attr('points', '0 0, 12 4, 0 8')
         .attr('fill', '#10b981');
+
+    // Add gradient for comfort zone
+    const defs = svg.append('defs');
+    const gradient = defs.append('linearGradient')
+        .attr('id', 'comfortGradient')
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '0%')
+        .attr('y2', '100%');
+    gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', '#86efac')
+        .attr('stop-opacity', 0.3);
+    gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', '#22c55e')
+        .attr('stop-opacity', 0.2);
 
     drawChartBackground();
 }
 
 /**
- * Draw chart background (grid and constant lines)
+ * Draw Mollier diagram background (H on x-axis, x on y-axis)
  */
 function drawChartBackground() {
-    // Define scales
+    // Define scales - Mollier diagram: x-axis = Enthalpy, y-axis = Humidity ratio
     xScale = d3.scaleLinear()
-        .domain([0, 50])
+        .domain([0, 120])  // Enthalpy range kJ/kg
         .range([0, chartWidth]);
 
     yScale = d3.scaleLinear()
-        .domain([0, 0.030])
+        .domain([0, 0.030])  // Humidity ratio range kg/kg
         .range([chartHeight, 0]);
 
     // Clear previous background
@@ -412,38 +747,44 @@ function drawChartBackground() {
     const bgLayer = chartGroup.append('g').attr('class', 'background-layer');
 
     // Draw axes
-    const xAxis = d3.axisBottom(xScale).ticks(10);
-    const yAxis = d3.axisLeft(yScale).ticks(10).tickFormat(d => (d * 1000).toFixed(1));
+    const xAxis = d3.axisBottom(xScale).ticks(12);
+    const yAxis = d3.axisLeft(yScale).ticks(10).tickFormat(d => (d * 1000).toFixed(0));
 
     bgLayer.append('g')
         .attr('transform', `translate(0, ${chartHeight})`)
         .call(xAxis)
+        .style('font-size', '12px')
         .append('text')
         .attr('x', chartWidth / 2)
-        .attr('y', 40)
+        .attr('y', 45)
         .attr('fill', 'black')
         .attr('text-anchor', 'middle')
-        .text('Dry Bulb Temperature (°C)');
+        .attr('font-size', '14px')
+        .attr('font-weight', '600')
+        .text('Enthalpy h (kJ/kg)');
 
     bgLayer.append('g')
         .call(yAxis)
+        .style('font-size', '12px')
         .append('text')
         .attr('transform', 'rotate(-90)')
         .attr('x', -chartHeight / 2)
-        .attr('y', -45)
+        .attr('y', -50)
         .attr('fill', 'black')
         .attr('text-anchor', 'middle')
-        .text('Humidity Ratio (g/kg)');
+        .attr('font-size', '14px')
+        .attr('font-weight', '600')
+        .text('Humidity Ratio x (g/kg)');
 
     // Draw RH curves
     const rhValues = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
     rhValues.forEach(rh => {
         const points = [];
-        for (let t = 0; t <= 50; t += 0.5) {
+        for (let t = -10; t <= 50; t += 0.5) {
             try {
                 const state = psychro.fromTdbRH(t, rh);
-                if (state.W <= 0.030) {
-                    points.push([t, state.W]);
+                if (state.H >= 0 && state.H <= 120 && state.W >= 0 && state.W <= 0.030) {
+                    points.push([state.H, state.W]);
                 }
             } catch(e) {}
         }
@@ -456,32 +797,32 @@ function drawChartBackground() {
 
             bgLayer.append('path')
                 .datum(points)
-                .attr('class', 'rh-curve')
-                .attr('d', line)
-                .style('stroke', rh === 100 ? '#2563eb' : '#93c5fd');
+                .attr('class', rh === 100 ? 'rh-curve rh-curve-100' : 'rh-curve')
+                .attr('d', line);
 
             // Label
             if (points.length > 2) {
-                const lastPoint = points[points.length - 1];
+                const labelPoint = points[Math.floor(points.length * 0.7)];
                 bgLayer.append('text')
-                    .attr('x', xScale(lastPoint[0]) + 5)
-                    .attr('y', yScale(lastPoint[1]))
-                    .attr('font-size', '10px')
-                    .attr('fill', '#3b82f6')
+                    .attr('x', xScale(labelPoint[0]))
+                    .attr('y', yScale(labelPoint[1]) - 5)
+                    .attr('font-size', '11px')
+                    .attr('font-weight', '600')
+                    .attr('fill', rh === 100 ? '#1e40af' : '#3b82f6')
                     .text(`${rh}%`);
             }
         }
     });
 
-    // Draw enthalpy lines
-    const enthalpyValues = [20, 30, 40, 50, 60, 70, 80, 90, 100];
-    enthalpyValues.forEach(h => {
+    // Draw constant temperature lines
+    const tempValues = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+    tempValues.forEach(temp => {
         const points = [];
-        for (let t = 0; t <= 50; t += 1) {
+        for (let rh = 0; rh <= 100; rh += 5) {
             try {
-                const state = psychro.fromTdbH(t, h);
-                if (state.W >= 0 && state.W <= 0.030 && state.RH >= 0 && state.RH <= 100) {
-                    points.push([t, state.W]);
+                const state = psychro.fromTdbRH(temp, rh);
+                if (state.H >= 0 && state.H <= 120 && state.W >= 0 && state.W <= 0.030) {
+                    points.push([state.H, state.W]);
                 }
             } catch(e) {}
         }
@@ -493,33 +834,46 @@ function drawChartBackground() {
 
             bgLayer.append('path')
                 .datum(points)
-                .attr('class', 'enthalpy-line')
+                .attr('class', 'temp-line')
                 .attr('d', line);
 
             // Label
-            const firstPoint = points[0];
+            const lastPoint = points[points.length - 1];
             bgLayer.append('text')
-                .attr('x', xScale(firstPoint[0]) - 5)
-                .attr('y', yScale(firstPoint[1]) - 5)
-                .attr('font-size', '9px')
-                .attr('fill', '#8b5cf6')
-                .text(`${h}`);
+                .attr('x', xScale(lastPoint[0]) + 5)
+                .attr('y', yScale(lastPoint[1]))
+                .attr('font-size', '10px')
+                .attr('fill', '#ef4444')
+                .text(`${temp}°C`);
         }
     });
 
-    // Draw comfort zone (22-26°C, 40-60% RH)
-    const comfortZone = [];
-    const comfortT = [22, 26, 26, 22];
-    const comfortRH = [40, 40, 60, 60];
+    // Draw comfort zone
+    const comfortPoints = [];
+    const comfortConditions = [
+        [22, 40], [22, 60], [26, 60], [26, 40]
+    ];
 
-    for (let i = 0; i < 4; i++) {
-        const state = psychro.fromTdbRH(comfortT[i], comfortRH[i]);
-        comfortZone.push([comfortT[i], state.W]);
-    }
+    comfortConditions.forEach(([t, rh]) => {
+        const state = psychro.fromTdbRH(t, rh);
+        comfortPoints.push([state.H, state.W]);
+    });
 
     bgLayer.append('polygon')
         .attr('class', 'comfort-zone')
-        .attr('points', comfortZone.map(p => `${xScale(p[0])},${yScale(p[1])}`).join(' '));
+        .attr('points', comfortPoints.map(p => `${xScale(p[0])},${yScale(p[1])}`).join(' '));
+
+    // Comfort zone label
+    const centerH = (comfortPoints[0][0] + comfortPoints[2][0]) / 2;
+    const centerW = (comfortPoints[0][1] + comfortPoints[2][1]) / 2;
+    bgLayer.append('text')
+        .attr('x', xScale(centerH))
+        .attr('y', yScale(centerW))
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '12px')
+        .attr('font-weight', '600')
+        .attr('fill', '#059669')
+        .text('Comfort Zone');
 }
 
 /**
@@ -537,9 +891,9 @@ function updateChart() {
     processes.forEach((proc, i) => {
         dataLayer.append('line')
             .attr('class', 'process-line')
-            .attr('x1', xScale(proc.start.Tdb))
+            .attr('x1', xScale(proc.start.H))
             .attr('y1', yScale(proc.start.W))
-            .attr('x2', xScale(proc.end.Tdb))
+            .attr('x2', xScale(proc.end.H))
             .attr('y2', yScale(proc.end.W));
     });
 
@@ -549,17 +903,22 @@ function updateChart() {
 
         group.append('circle')
             .attr('class', 'state-point')
-            .attr('cx', xScale(state.Tdb))
+            .attr('cx', xScale(state.H))
             .attr('cy', yScale(state.W))
-            .attr('r', 6);
+            .attr('r', 7)
+            .append('title')
+            .text(`Point ${i}: ${state.Tdb.toFixed(1)}°C, ${state.RH.toFixed(0)}%RH`);
 
         group.append('text')
-            .attr('x', xScale(state.Tdb))
-            .attr('y', yScale(state.W) - 12)
+            .attr('x', xScale(state.H))
+            .attr('y', yScale(state.W) - 15)
             .attr('text-anchor', 'middle')
             .attr('font-weight', 'bold')
-            .attr('font-size', '12px')
+            .attr('font-size', '14px')
             .attr('fill', '#dc2626')
+            .attr('stroke', 'white')
+            .attr('stroke-width', '3')
+            .attr('paint-order', 'stroke')
             .text(i);
     });
 }
@@ -568,12 +927,13 @@ function updateChart() {
  * Reset all data
  */
 function resetAll() {
-    if (confirm('Reset all data?')) {
+    if (confirm('Reset all data? This cannot be undone.')) {
         states = [];
         processes = [];
         updateChart();
         updateTables();
         updateProcessList();
+        document.getElementById('massflow').value = '';
     }
 }
 
@@ -583,9 +943,13 @@ function resetAll() {
 function saveProject() {
     const project = {
         states: states,
-        processes: processes,
+        processes: processes.map(p => ({
+            type: p.type,
+            name: p.name,
+            waterFlow: p.waterFlow
+        })),
         altitude: currentAltitude,
-        airflow: document.getElementById('airflow').value,
+        airflow: currentAirflow,
         timestamp: new Date().toISOString()
     };
 
@@ -606,7 +970,18 @@ function loadProject() {
     try {
         const project = JSON.parse(saved);
         states = project.states;
-        processes = project.processes;
+
+        // Reconstruct processes with full state objects
+        processes = [];
+        for (let i = 0; i < project.processes.length; i++) {
+            processes.push({
+                type: project.processes[i].type,
+                name: project.processes[i].name,
+                start: states[i],
+                end: states[i + 1],
+                waterFlow: project.processes[i].waterFlow || 0
+            });
+        }
 
         if (project.altitude !== undefined) {
             document.getElementById('altitude').value = project.altitude;
@@ -615,13 +990,15 @@ function loadProject() {
 
         if (project.airflow !== undefined) {
             document.getElementById('airflow').value = project.airflow;
+            currentAirflow = project.airflow;
         }
 
+        updateMassFlow();
         updateChart();
         updateTables();
         updateProcessList();
 
-        alert('Project loaded successfully!');
+        alert(`Project loaded successfully!\nSaved: ${new Date(project.timestamp).toLocaleString()}`);
     } catch(error) {
         alert('Error loading project: ' + error.message);
     }
@@ -637,18 +1014,23 @@ function exportData() {
             type: p.type,
             name: p.name,
             start: p.start,
-            end: p.end
+            end: p.end,
+            waterFlow: p.waterFlow
         })),
-        altitude: currentAltitude,
-        airflow: document.getElementById('airflow').value,
-        timestamp: new Date().toISOString()
+        settings: {
+            altitude: currentAltitude,
+            airflow: currentAirflow,
+            pressure: psychro.P
+        },
+        timestamp: new Date().toISOString(),
+        version: '2.0'
     };
 
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `psychro-project-${Date.now()}.json`;
+    a.download = `mollier-diagram-${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

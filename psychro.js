@@ -340,6 +340,94 @@ class PsychroCalc {
             deltaH: deltaH
         };
     }
+
+    /**
+     * Adiabatic humidification (constant enthalpy)
+     * @param {object} state - Initial air state
+     * @param {number} target - Target value (RH% or x in g/kg)
+     * @param {string} type - 'rh' or 'x'
+     * @returns {object} Final air state
+     */
+    adiabaticHumidification(state, target, type = 'rh') {
+        const targetH = state.H; // Constant enthalpy
+
+        if (type === 'rh') {
+            // Iterate to find temperature that gives target RH at constant H
+            let Tdb = state.Tdb;
+            for (let i = 0; i < 100; i++) {
+                const testState = this.fromTdbH(Tdb, targetH);
+                if (Math.abs(testState.RH - target) < 0.1) {
+                    return testState;
+                }
+                // Adjust temperature based on RH error
+                Tdb -= (testState.RH - target) * 0.1;
+            }
+            // Fallback
+            return this.fromTdbH(Tdb, targetH);
+        } else {
+            // Target is x in g/kg, convert to kg/kg
+            const targetX = target / 1000;
+            const newTdb = (targetH - targetX * 2501) / (1.006 + targetX * 1.86);
+            return this.fromTdbW(newTdb, targetX);
+        }
+    }
+
+    /**
+     * Steam humidification
+     * @param {object} state - Initial air state
+     * @param {number} target - Target value (RH% or x in g/kg)
+     * @param {string} type - 'rh' or 'x'
+     * @param {number} steamTemp - Steam temperature in °C
+     * @returns {object} Final air state
+     */
+    steamHumidification(state, target, type = 'rh', steamTemp = 100) {
+        let targetX;
+
+        if (type === 'rh') {
+            // Calculate target humidity ratio from target RH
+            const Pws = this.saturationPressure(state.Tdb);
+            const targetPw = (target / 100) * Pws;
+            targetX = 0.62198 * targetPw / (this.P - targetPw);
+        } else {
+            // Target is already in g/kg, convert to kg/kg
+            targetX = target / 1000;
+        }
+
+        const deltaX = targetX - state.W;
+
+        // Energy from steam: latent heat + sensible heat of water
+        // Simplified: assume steam adds enthalpy of vaporization + heating
+        const steamEnthalpy = 2501 + 1.86 * steamTemp; // kJ/kg of steam
+        const newH = state.H + deltaX * steamEnthalpy;
+
+        // Calculate new temperature
+        const newTdb = (newH - targetX * 2501) / (1.006 + targetX * 1.86);
+
+        return this.fromTdbW(newTdb, targetX);
+    }
+
+    /**
+     * Humidify by adding moisture at a given temperature
+     * @param {object} state - Initial air state
+     * @param {number} deltaX - Change in humidity ratio in kg/kg
+     * @param {number} waterTemp - Water temperature in °C
+     * @returns {object} Final air state
+     */
+    humidifyByDeltaX(state, deltaX, waterTemp = 20) {
+        const newX = state.W + deltaX;
+
+        // Energy balance: water adds sensible and latent heat
+        // h_water = 4.186 * T_water (simplified)
+        // h_vapor = 2501 + 1.86 * T_air
+        const waterSensible = 4.186 * waterTemp;
+        const vaporLatent = 2501 + 1.86 * state.Tdb;
+        const energyAdded = deltaX * (vaporLatent + waterSensible - 4.186 * waterTemp);
+
+        const newH = state.H + energyAdded;
+        const newTdb = (newH - newX * 2501) / (1.006 + newX * 1.86);
+
+        return this.fromTdbW(newTdb, newX);
+    }
 }
 
 // Create global instance
