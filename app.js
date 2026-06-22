@@ -699,14 +699,14 @@ function initializeChart() {
     // Add arrow marker for process lines
     svg.append('defs').append('marker')
         .attr('id', 'arrowhead')
-        .attr('markerWidth', 12)
-        .attr('markerHeight', 12)
-        .attr('refX', 11)
-        .attr('refY', 4)
+        .attr('markerWidth', 8)
+        .attr('markerHeight', 8)
+        .attr('refX', 7)
+        .attr('refY', 2.5)
         .attr('orient', 'auto')
         .append('polygon')
-        .attr('points', '0 0, 12 4, 0 8')
-        .attr('fill', '#10b981');
+        .attr('points', '0 0, 8 2.5, 0 5')
+        .attr('fill', '#ef4444');
 
     // Add gradient for comfort zone
     const defs = svg.append('defs');
@@ -842,7 +842,7 @@ function drawChartBackground() {
                     .attr('y', yScale(labelPoint[1]))
                     .attr('font-size', '11px')
                     .attr('font-weight', '600')
-                    .attr('fill', rh === 100 ? '#047857' : '#10b981')
+                    .attr('fill', rh === 100 ? '#2563eb' : '#3b82f6')
                     .text(`${rh}%`);
             }
         }
