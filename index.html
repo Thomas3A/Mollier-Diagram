@@ -3,333 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mollier Diagram - Professional Psychrometric Simulator</title>
+    <title>Psychrometric Chart Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-        * {
-            font-family: 'Inter', sans-serif;
+        :root {
+            --c-heat: #dc2626;   /* red  - heating / temperature up */
+            --c-cool: #2563eb;   /* blue - cooling / humidity / RH */
+            --c-ink:  #1e293b;   /* slate-800 - primary text / points */
+            --c-line: #e2e8f0;   /* slate-200 - borders */
+            --c-grid: #eef2f6;   /* gridlines */
         }
 
+        * { font-family: 'Inter', sans-serif; }
+
         body {
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            background: #f1f5f9;
+            color: var(--c-ink);
             min-height: 100vh;
         }
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(16, 185, 129, 0.1);
+        .card {
+            background: #ffffff;
+            border: 1px solid var(--c-line);
+            border-radius: 10px;
         }
 
-        .chart-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);
-            border: 2px solid #e5e7eb;
-        }
-
-        .grid-line {
-            stroke: #d1d5db;
-            stroke-width: 1;
-            opacity: 0.5;
-        }
-
-        .grid-line-major {
-            stroke: #9ca3af;
-            stroke-width: 1.5;
-            opacity: 0.7;
-        }
-
-        .temp-line {
-            fill: none;
-            stroke: #6b7280;
-            stroke-width: 1.5;
-            opacity: 0.3;
-            stroke-dasharray: 3,3;
-        }
-
-        .rh-curve {
-            fill: none;
-            stroke: #3b82f6;
-            stroke-width: 2;
-            opacity: 0.7;
-        }
-
-        .rh-curve-100 {
-            stroke: #2563eb;
-            stroke-width: 2.5;
-        }
-
-        .state-point {
-            fill: #059669;
-            stroke: white;
-            stroke-width: 3;
-            cursor: pointer;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-            transition: all 0.2s;
-        }
-
-        .state-point:hover {
-            fill: #047857;
-            r: 8;
-        }
-
-        .process-line {
-            fill: none;
-            stroke: #ef4444;
-            stroke-width: 3;
-            marker-end: url(#arrowhead);
-            filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.3));
-        }
-
-        .comfort-zone {
-            fill: url(#comfortGradient);
-            opacity: 0.2;
-            stroke: #10b981;
-            stroke-width: 2;
-            stroke-dasharray: 5,5;
-        }
-
-        .input-group {
-            position: relative;
-        }
-
-        .input-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #374151;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-            background: white;
-        }
-
-        .input-field:focus {
-            outline: none;
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.2s;
-            cursor: pointer;
-            border: none;
-            font-size: 0.95rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(52, 211, 153, 0.3);
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(52, 211, 153, 0.4);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
-
-        .process-card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(249,250,251,0.95));
-            border-left: 4px solid #10b981;
-            padding: 1rem;
-            border-radius: 8px;
-            transition: all 0.2s;
-            border: 1px solid #e5e7eb;
-        }
-
-        .process-card:hover {
-            transform: translateX(4px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
-            border-left-color: #059669;
-        }
-
-        table {
-            font-size: 0.9rem;
-        }
-
-        thead {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-
-        thead th {
-            padding: 1rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-size: 0.75rem;
-        }
-
-        tbody tr {
-            transition: all 0.2s;
-        }
-
-        tbody tr:hover {
-            background: rgba(16, 185, 129, 0.04);
-        }
-
-        .section-header {
+        .card-head {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 2px solid #e5e7eb;
-        }
-
-        .section-icon {
-            font-size: 1.5rem;
-        }
-
-        .section-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1f2937;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
+            gap: 0.5rem;
+            padding: 0.9rem 1.25rem;
+            border-bottom: 1px solid var(--c-line);
             font-weight: 600;
+            font-size: 0.95rem;
+            color: #334155;
         }
 
-        .badge-success {
-            background: #d1fae5;
-            color: #065f46;
+        .card-body { padding: 1.25rem; }
+
+        .label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.35rem;
         }
 
-        .badge-info {
-            background: #dbeafe;
-            color: #1e40af;
+        .field {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 0.9rem;
+            background: #fff;
+            color: var(--c-ink);
+            transition: border-color .15s, box-shadow .15s;
         }
-
-        .badge-warning {
-            background: #fef3c7;
-            color: #92400e;
+        .field:focus {
+            outline: none;
+            border-color: #94a3b8;
+            box-shadow: 0 0 0 3px rgba(148,163,184,0.18);
         }
+        .field[readonly] { background: #f8fafc; color: #64748b; }
 
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        .btn {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            border-radius: 7px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background .15s, border-color .15s;
         }
+        .btn-primary { background: var(--c-ink); color: #fff; }
+        .btn-primary:hover { background: #0f172a; }
+        .btn-outline { background: #fff; color: #334155; border-color: #cbd5e1; }
+        .btn-outline:hover { background: #f8fafc; }
+        .btn-ghost-danger { background: #fff; color: #dc2626; border-color: #fecaca; }
+        .btn-ghost-danger:hover { background: #fef2f2; }
 
-        ::-webkit-scrollbar-track {
+        table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
+        thead th {
+            text-align: left;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #64748b;
+            border-bottom: 1px solid var(--c-line);
+            white-space: nowrap;
+        }
+        tbody td {
+            padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            white-space: nowrap;
+        }
+        tbody tr:hover { background: #f8fafc; }
+
+        .pill {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.15rem 0.6rem;
+            border-radius: 999px;
             background: #f1f5f9;
+            color: #475569;
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: #94a3b8;
-            border-radius: 4px;
+        .proc-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.7rem 0.85rem;
+            border: 1px solid var(--c-line);
+            border-left: 3px solid var(--c-ink);
+            border-radius: 7px;
+            background: #fff;
         }
+        .proc-remove {
+            color: #94a3b8;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 0.25rem;
+        }
+        .proc-remove:hover { color: #dc2626; }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
+        /* Chart */
+        .grid-line { stroke: var(--c-grid); stroke-width: 1; }
+        .grid-line-major { stroke: #dbe3ec; stroke-width: 1; }
+        .axis path, .axis line { stroke: #cbd5e1; }
+        .axis text { fill: #475569; font-size: 11px; }
+        .rh-curve { fill: none; stroke: var(--c-cool); stroke-width: 1.4; opacity: 0.55; }
+        .rh-curve-100 { stroke: var(--c-cool); stroke-width: 2; opacity: 0.9; }
+        .enthalpy-line { fill: none; stroke: #cbd5e1; stroke-width: 1; opacity: 0.7; stroke-dasharray: 4,3; }
+        .comfort-zone { fill: #2563eb; opacity: 0.07; stroke: #93c5fd; stroke-width: 1; stroke-dasharray: 4,3; }
+        .process-line { fill: none; stroke: var(--c-heat); stroke-width: 2.5; marker-end: url(#arrow); }
+        .state-point { fill: var(--c-ink); stroke: #fff; stroke-width: 2.5; cursor: pointer; }
+        .state-point:hover { fill: #0f172a; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="p-6">
-    <div class="max-w-[1920px] mx-auto">
+<body>
+    <div class="max-w-[1800px] mx-auto p-5">
         <!-- Header -->
-        <header class="glass-card rounded-2xl p-8 mb-6">
-            <div class="flex items-center justify-between">
+        <header class="card mb-5">
+            <div class="flex items-center justify-between px-6 py-4">
                 <div>
-                    <h1 class="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                        Psychrometric Chart Simulator
-                    </h1>
-                    <p class="text-gray-600 mt-2 text-lg">Professional HVAC Analysis Tool</p>
+                    <h1 class="text-2xl font-bold text-slate-800">Psychrometric Chart Simulator</h1>
+                    <p class="text-slate-500 text-sm mt-0.5">Interactive HVAC process analysis</p>
                 </div>
                 <div class="text-right">
-                    <div class="text-sm text-gray-500">Atmospheric Pressure</div>
-                    <div class="text-2xl font-bold text-green-600"><span id="pressure">101.325</span> kPa</div>
+                    <div class="text-xs text-slate-400 uppercase tracking-wide">Pressure</div>
+                    <div class="text-lg font-semibold text-slate-700"><span id="pressure">101.325</span> kPa</div>
                 </div>
             </div>
         </header>
 
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
-            <!-- Left Sidebar: Settings & Input -->
-            <div class="xl:col-span-1 space-y-6">
-                <!-- Settings -->
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">⚙️</span>
-                        <h2 class="section-title">Settings</h2>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="input-group">
-                            <label class="input-label">Altitude (m)</label>
-                            <input type="number" id="altitude" value="0" class="input-field" step="10">
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-5">
+            <!-- Left: Inputs -->
+            <div class="xl:col-span-1 space-y-5">
+                <div class="card">
+                    <div class="card-head">Settings</div>
+                    <div class="card-body space-y-3">
+                        <div>
+                            <label class="label">Altitude (m)</label>
+                            <input type="number" id="altitude" value="0" class="field" step="10">
                         </div>
-
-                        <div class="input-group">
-                            <label class="input-label">Air Flow (m³/h)</label>
-                            <input type="number" id="airflow" value="1000" class="input-field" step="100">
+                        <div>
+                            <label class="label">Air Flow (m³/h)</label>
+                            <input type="number" id="airflow" value="1000" class="field" step="100">
                         </div>
-
-                        <div class="input-group">
-                            <label class="input-label">Mass Flow (kg/s)</label>
-                            <input type="number" id="massflow" value="" readonly class="input-field bg-gray-50">
-                            <p class="text-xs text-gray-500 mt-1">Calculated from air flow & density</p>
+                        <div>
+                            <label class="label">Mass Flow (kg/s)</label>
+                            <input type="number" id="massflow" value="" readonly class="field">
                         </div>
                     </div>
                 </div>
 
-                <!-- Initial State -->
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">🎯</span>
-                        <h2 class="section-title">Initial Air State</h2>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="input-group">
-                            <label class="input-label">Dry Bulb Temperature (°C)</label>
-                            <input type="number" id="tdb" value="25" step="0.1" class="input-field">
+                <div class="card">
+                    <div class="card-head">Initial Air State</div>
+                    <div class="card-body space-y-3">
+                        <div>
+                            <label class="label">Dry Bulb Temperature (°C)</label>
+                            <input type="number" id="tdb" value="25" step="0.1" class="field">
                         </div>
-
-                        <div class="input-group">
-                            <label class="input-label">Property Type</label>
-                            <select id="param-type" class="input-field">
+                        <div>
+                            <label class="label">Second Property</label>
+                            <select id="param-type" class="field">
                                 <option value="rh">Relative Humidity (%)</option>
                                 <option value="twb">Wet Bulb Temp (°C)</option>
                                 <option value="tdew">Dew Point Temp (°C)</option>
@@ -337,159 +208,119 @@
                                 <option value="h">Enthalpy (kJ/kg)</option>
                             </select>
                         </div>
-
-                        <div class="input-group">
-                            <label class="input-label">Value</label>
-                            <input type="number" id="param-value" value="50" step="0.1" class="input-field">
+                        <div>
+                            <label class="label">Value</label>
+                            <input type="number" id="param-value" value="50" step="0.1" class="field">
                         </div>
-
-                        <button onclick="calculateInitialState()" class="btn btn-primary w-full">
-                            Calculate Initial State
-                        </button>
+                        <button onclick="calculateInitialState()" class="btn btn-primary">Set Initial State</button>
                     </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">💾</span>
-                        <h2 class="section-title">Actions</h2>
-                    </div>
-                    <div class="space-y-2">
-                        <button onclick="saveProject()" class="btn btn-secondary w-full">Save Project</button>
-                        <button onclick="loadProject()" class="btn btn-secondary w-full">Load Project</button>
-                        <button onclick="exportData()" class="btn btn-secondary w-full">Export JSON</button>
-                        <button onclick="resetAll()" class="btn btn-danger w-full">Reset All</button>
+                <div class="card">
+                    <div class="card-head">Project</div>
+                    <div class="card-body space-y-2">
+                        <button onclick="saveProject()" class="btn btn-outline">Save</button>
+                        <button onclick="loadProject()" class="btn btn-outline">Load</button>
+                        <button onclick="exportData()" class="btn btn-outline">Export JSON</button>
+                        <button onclick="resetAll()" class="btn btn-ghost-danger">Reset All</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Center: Chart -->
-            <div class="xl:col-span-2 space-y-6">
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">📊</span>
-                        <h2 class="section-title">Psychrometric Chart</h2>
+            <!-- Center: Chart + tables -->
+            <div class="xl:col-span-2 space-y-5">
+                <div class="card">
+                    <div class="card-head">
+                        Psychrometric Chart
                         <div class="ml-auto flex gap-2">
-                            <span class="badge badge-success">Abs. Humidity (x-axis, top)</span>
-                            <span class="badge badge-info">Temperature (y-axis, left)</span>
+                            <span class="pill" style="color:#2563eb">RH lines</span>
+                            <span class="pill" style="color:#dc2626">Process</span>
                         </div>
                     </div>
-                    <div class="chart-container p-4">
-                        <svg id="chart" width="100%" height="720"></svg>
+                    <div class="card-body">
+                        <svg id="chart" width="100%" height="640"></svg>
                     </div>
                 </div>
 
-                <!-- Tables -->
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">📋</span>
-                        <h2 class="section-title">State Points</h2>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full">
+                <div class="card">
+                    <div class="card-head">State Points</div>
+                    <div class="card-body overflow-x-auto">
+                        <table>
                             <thead>
                                 <tr>
-                                    <th class="text-left">Point</th>
-                                    <th class="text-left">T<sub>db</sub> (°C)</th>
-                                    <th class="text-left">T<sub>wb</sub> (°C)</th>
-                                    <th class="text-left">T<sub>dew</sub> (°C)</th>
-                                    <th class="text-left">RH (%)</th>
-                                    <th class="text-left">x (g/kg)</th>
-                                    <th class="text-left">h (kJ/kg)</th>
-                                    <th class="text-left">ρ (kg/m³)</th>
+                                    <th>Pt</th><th>T<sub>db</sub> °C</th><th>T<sub>wb</sub> °C</th>
+                                    <th>T<sub>dew</sub> °C</th><th>RH %</th><th>x g/kg</th>
+                                    <th>h kJ/kg</th><th>ρ kg/m³</th>
                                 </tr>
                             </thead>
-                            <tbody id="states-table" class="bg-white">
-                                <tr>
-                                    <td colspan="8" class="px-4 py-6 text-gray-500 italic text-center">No data available</td>
-                                </tr>
+                            <tbody id="states-table">
+                                <tr><td colspan="8" class="text-center text-slate-400 italic py-5">No data</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">📈</span>
-                        <h2 class="section-title">Process Changes & Load Calculations</h2>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full">
+                <div class="card">
+                    <div class="card-head">Process Changes & Loads</div>
+                    <div class="card-body overflow-x-auto">
+                        <table>
                             <thead>
                                 <tr>
-                                    <th class="text-left">Process</th>
-                                    <th class="text-left">ΔT (°C)</th>
-                                    <th class="text-left">Δx (g/kg)</th>
-                                    <th class="text-left">Δh (kJ/kg)</th>
-                                    <th class="text-left">Q<sub>total</sub> (kW)</th>
-                                    <th class="text-left">Q<sub>sensible</sub> (kW)</th>
-                                    <th class="text-left">Q<sub>latent</sub> (kW)</th>
-                                    <th class="text-left">Water (kg/h)</th>
+                                    <th>Process</th><th>ΔT °C</th><th>Δx g/kg</th><th>Δh kJ/kg</th>
+                                    <th>Q<sub>tot</sub> kW</th><th>Q<sub>sens</sub> kW</th>
+                                    <th>Q<sub>lat</sub> kW</th><th>Water kg/h</th>
                                 </tr>
                             </thead>
-                            <tbody id="changes-table" class="bg-white">
-                                <tr>
-                                    <td colspan="8" class="px-4 py-6 text-gray-500 italic text-center">No processes added</td>
-                                </tr>
+                            <tbody id="changes-table">
+                                <tr><td colspan="8" class="text-center text-slate-400 italic py-5">No processes</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Sidebar: Process Management -->
-            <div class="xl:col-span-1 space-y-6">
-                <!-- Add Process -->
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">➕</span>
-                        <h2 class="section-title">Add Process</h2>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="input-group">
-                            <label class="input-label">Process Category</label>
-                            <select id="process-category" onchange="updateProcessTypes()" class="input-field">
-                                <option value="heating">🔥 Heating</option>
-                                <option value="cooling">❄️ Cooling</option>
-                                <option value="humidification">💧 Humidification</option>
-                                <option value="dehumidification">💨 Dehumidification</option>
-                                <option value="mixing">🔀 Mixing</option>
-                                <option value="other">⚡ Other</option>
+            <!-- Right: Processes -->
+            <div class="xl:col-span-1 space-y-5">
+                <div class="card">
+                    <div class="card-head">Add Process</div>
+                    <div class="card-body space-y-3">
+                        <div>
+                            <label class="label">Category</label>
+                            <select id="process-category" onchange="updateProcessTypes()" class="field">
+                                <option value="heating">Heating</option>
+                                <option value="cooling">Cooling</option>
+                                <option value="humidification">Humidification</option>
+                                <option value="dehumidification">Dehumidification</option>
+                                <option value="mixing">Mixing</option>
+                                <option value="other">Other</option>
                             </select>
                         </div>
-
-                        <div class="input-group">
-                            <label class="input-label">Process Type</label>
-                            <select id="process-type" onchange="updateProcessInputs()" class="input-field">
-                                <!-- Options populated dynamically -->
-                            </select>
+                        <div>
+                            <label class="label">Type</label>
+                            <select id="process-type" onchange="updateProcessInputs()" class="field"></select>
                         </div>
-
-                        <div id="process-inputs" class="space-y-3">
-                            <!-- Dynamic inputs -->
-                        </div>
-
-                        <button onclick="addProcess()" class="btn btn-success w-full">
-                            Add Process Step
-                        </button>
+                        <div id="process-inputs" class="space-y-3"></div>
+                        <button onclick="addProcess()" class="btn btn-primary">Add Step</button>
                     </div>
                 </div>
 
-                <!-- Process List -->
-                <div class="glass-card rounded-xl p-6">
-                    <div class="section-header">
-                        <span class="section-icon">🔄</span>
-                        <h2 class="section-title">Process Steps</h2>
-                        <span id="process-count" class="ml-auto badge badge-success">0</span>
+                <div class="card">
+                    <div class="card-head">
+                        Process Steps
+                        <span id="process-count" class="ml-auto pill">0</span>
                     </div>
-                    <div id="process-list" class="space-y-2 max-h-96 overflow-y-auto">
-                        <p class="text-gray-500 italic text-center py-4">No processes added yet</p>
+                    <div class="card-body">
+                        <div id="process-list" class="space-y-2">
+                            <p class="text-slate-400 italic text-sm text-center py-3">No steps yet</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <footer class="text-center text-xs text-slate-400 mt-6 pb-4">
+            Calculations per ASHRAE psychrometric relations · For engineering reference
+        </footer>
     </div>
 
     <script src="psychro.js"></script>
