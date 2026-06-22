@@ -47,22 +47,22 @@ class PsychroCalc {
      * @returns {number} Wet bulb temperature in °C
      */
     wetBulb(Tdb, W) {
-        // Iterative method to find wet bulb temperature
-        let Twb = Tdb;
-        for (let i = 0; i < 50; i++) {
-            const Pws = this.saturationPressure(Twb);
-            const Ws = 0.62198 * Pws / (this.P - Pws);
-            const Wnew = ((2501 - 2.326 * Twb) * Ws - 1.006 * (Tdb - Twb)) / (2501 + 1.86 * Tdb - 4.186 * Twb);
+        // The humidity ratio implied by a wet-bulb temperature increases
+        // monotonically with Twb, so we can solve by bisection on Twb in
+        // the interval [-60, Tdb]. f(Twb) = Wstar(Tdb, Twb) - W.
+        let lo = -60, hi = Tdb;
+        const f = (twb) => this.humidityRatioFromWetBulb(Tdb, twb) - W;
 
-            if (Math.abs(Wnew - W) < 0.00001) break;
+        // If air is essentially saturated, wet bulb equals dry bulb.
+        if (f(hi) <= 0) return Tdb;
 
-            const error = W - Wnew;
-            Twb += error * 0.5;
-
-            if (Twb > Tdb) Twb = Tdb;
-            if (Twb < -50) Twb = -50;
+        for (let i = 0; i < 80; i++) {
+            const mid = (lo + hi) / 2;
+            const fm = f(mid);
+            if (Math.abs(fm) < 1e-7) return mid;
+            if (fm > 0) hi = mid; else lo = mid;
         }
-        return Twb;
+        return (lo + hi) / 2;
     }
 
     /**
@@ -349,21 +349,31 @@ class PsychroCalc {
      * @returns {object} Final air state
      */
     adiabaticHumidification(state, target, type = 'rh') {
-        const targetH = state.H; // Constant enthalpy
+        const targetH = state.H; // Constant enthalpy (evaporative cooling)
 
         if (type === 'rh') {
-            // Iterate to find temperature that gives target RH at constant H
-            let Tdb = state.Tdb;
-            for (let i = 0; i < 100; i++) {
-                const testState = this.fromTdbH(Tdb, targetH);
-                if (Math.abs(testState.RH - target) < 0.1) {
-                    return testState;
-                }
-                // Adjust temperature based on RH error
-                Tdb -= (testState.RH - target) * 0.1;
+            // Along a constant-enthalpy line, lowering temperature raises both
+            // humidity ratio and RH (up to saturation at the wet-bulb point).
+            // RH is therefore monotonically decreasing in T, so bisect on T
+            // between the wet-bulb (saturation, RH = 100) and the start temp.
+            const tHigh = state.Tdb;        // RH = start RH here
+            const tLow = state.Twb - 1;     // at/below saturation (RH >= 100)
+            target = Math.min(Math.max(target, 0.1), 100);
+
+            const rhAt = (t) => this.fromTdbH(t, targetH).RH;
+
+            let lo = tLow, hi = tHigh;
+            // Guard: if target above what saturation gives, return saturation.
+            if (target >= rhAt(lo)) return this.fromTdbH(lo, targetH);
+            if (target <= rhAt(hi)) return this.fromTdbH(hi, targetH);
+
+            for (let i = 0; i < 80; i++) {
+                const mid = (lo + hi) / 2;
+                const rh = rhAt(mid);
+                if (Math.abs(rh - target) < 0.05) return this.fromTdbH(mid, targetH);
+                if (rh > target) lo = mid; else hi = mid; // higher T -> lower RH
             }
-            // Fallback
-            return this.fromTdbH(Tdb, targetH);
+            return this.fromTdbH((lo + hi) / 2, targetH);
         } else {
             // Target is x in g/kg, convert to kg/kg
             const targetX = target / 1000;
