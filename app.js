@@ -172,7 +172,7 @@ function updateProcessInputs() {
                  + field('Target RH (%)', 'target-rh', 'e.g. 95'); break;
         case 'humid-adiabatic':
             html = targetTypeSelect() + field('Target value', 'humid-target', 'e.g. 80')
-                 + `<p class="text-xs text-slate-500">Evaporative — follows constant enthalpy.</p>`; break;
+                 + `<p class="text-xs text-emerald-700">Evaporative — follows constant enthalpy.</p>`; break;
         case 'humid-steam':
             html = targetTypeSelect() + field('Target value', 'humid-target', 'e.g. 60')
                  + field('Steam temperature (°C)', 'steam-temp', '', 100); break;
@@ -401,17 +401,17 @@ function updateProcessList() {
     document.getElementById('process-count').textContent = processes.length;
 
     if (processes.length === 0) {
-        list.innerHTML = '<p class="text-slate-400 italic text-sm text-center py-3">No steps yet</p>';
+        list.innerHTML = '<p class="text-emerald-500 italic text-sm text-center py-3">No steps yet</p>';
         return;
     }
 
     list.innerHTML = processes.map((p, i) => `
         <div class="proc-item">
             <div>
-                <div class="text-sm font-semibold text-slate-700">
-                    <span class="text-slate-400">${i}→${i + 1}</span> ${p.name}
+                <div class="text-sm font-semibold text-emerald-900">
+                    <span class="text-emerald-500">${i}→${i + 1}</span> ${p.name}
                 </div>
-                <div class="text-xs text-slate-500 mt-0.5">
+                <div class="text-xs text-emerald-700 mt-0.5">
                     ΔT ${(p.end.Tdb - p.start.Tdb).toFixed(1)} °C ·
                     Δx ${((p.end.W - p.start.W) * 1000).toFixed(2)} g/kg
                 </div>
@@ -426,11 +426,11 @@ function signClass(v) { return v >= 0 ? 'color:#dc2626' : 'color:#2563eb'; }
 function updateTables() {
     const st = document.getElementById('states-table');
     if (states.length === 0) {
-        st.innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 italic py-5">No data</td></tr>';
+        st.innerHTML = '<tr><td colspan="8" class="text-center text-emerald-500 italic py-5">No data</td></tr>';
     } else {
         st.innerHTML = states.map((s, i) => `
             <tr>
-                <td class="font-semibold text-slate-700">${i}</td>
+                <td class="font-semibold text-emerald-900">${i}</td>
                 <td>${s.Tdb.toFixed(2)}</td>
                 <td>${s.Twb.toFixed(2)}</td>
                 <td>${s.Tdew.toFixed(2)}</td>
@@ -443,7 +443,7 @@ function updateTables() {
 
     const ct = document.getElementById('changes-table');
     if (processes.length === 0) {
-        ct.innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 italic py-5">No processes</td></tr>';
+        ct.innerHTML = '<tr><td colspan="8" class="text-center text-emerald-500 italic py-5">No processes</td></tr>';
         return;
     }
     ct.innerHTML = processes.map((p, i) => {
@@ -458,7 +458,7 @@ function updateTables() {
         const f = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
         return `
             <tr>
-                <td class="font-medium text-slate-700">${i}→${i + 1}: ${p.name}</td>
+                <td class="font-medium text-emerald-900">${i}→${i + 1}: ${p.name}</td>
                 <td style="${signClass(dT)}">${f(dT)}</td>
                 <td style="${signClass(dx)}">${f(dx)}</td>
                 <td style="${signClass(dh)}">${f(dh)}</td>
@@ -510,7 +510,7 @@ function drawChartBackground() {
     bg.append('g').attr('class', 'axis')
         .call(d3.axisTop(xScale).ticks(13))
         .append('text').attr('x', chartWidth / 2).attr('y', -32)
-        .attr('fill', '#334155').attr('text-anchor', 'middle')
+        .attr('fill', '#065f46').attr('text-anchor', 'middle')
         .attr('font-size', '13px').attr('font-weight', '600')
         .text('Absolute Humidity  x  (g/kg)');
 
@@ -522,7 +522,7 @@ function drawChartBackground() {
         .call(d3.axisLeft(yScale).ticks(11))
         .append('text').attr('transform', 'rotate(-90)')
         .attr('x', -chartHeight / 2).attr('y', -42)
-        .attr('fill', '#334155').attr('text-anchor', 'middle')
+        .attr('fill', '#065f46').attr('text-anchor', 'middle')
         .attr('font-size', '13px').attr('font-weight', '600')
         .text('Dry Bulb Temperature  (°C)');
 
@@ -593,7 +593,7 @@ function updateChart() {
         g.append('text')
             .attr('x', xScale(s.W * 1000)).attr('y', yScale(s.Tdb) - 12)
             .attr('text-anchor', 'middle').attr('font-weight', '700').attr('font-size', '12px')
-            .attr('fill', '#1e293b').attr('stroke', '#fff').attr('stroke-width', '3')
+            .attr('fill', '#064e3b').attr('stroke', '#fff').attr('stroke-width', '3')
             .attr('paint-order', 'stroke').text(i);
     });
 }

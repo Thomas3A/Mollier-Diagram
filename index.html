@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#059669">
     <title>Psychrometric Chart Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -10,17 +11,20 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         :root {
-            --c-heat: #dc2626;   /* red  - heating / temperature up */
-            --c-cool: #2563eb;   /* blue - cooling / humidity / RH */
-            --c-ink:  #1e293b;   /* slate-800 - primary text / points */
-            --c-line: #e2e8f0;   /* slate-200 - borders */
-            --c-grid: #eef2f6;   /* gridlines */
+            --c-heat:   #dc2626;   /* red   - heating / process lines */
+            --c-cool:   #2563eb;   /* blue  - cooling / RH curves */
+            --c-ink:    #064e3b;   /* emerald-900 - primary text */
+            --c-accent: #059669;   /* emerald-600 - buttons, points, accents */
+            --c-accent-dark: #047857; /* emerald-700 - hover, labels */
+            --c-soft:   #ecfdf5;   /* emerald-50  - soft fills */
+            --c-line:   #d1fae5;   /* emerald-100 - borders */
+            --c-grid:   #e6f6ee;   /* gridlines */
         }
 
         * { font-family: 'Inter', sans-serif; }
 
         body {
-            background: #f1f5f9;
+            background: #d1fae5 linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
             color: var(--c-ink);
             min-height: 100vh;
         }
@@ -29,6 +33,7 @@
             background: #ffffff;
             border: 1px solid var(--c-line);
             border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(6, 78, 59, 0.06);
         }
 
         .card-head {
@@ -37,9 +42,11 @@
             gap: 0.5rem;
             padding: 0.9rem 1.25rem;
             border-bottom: 1px solid var(--c-line);
+            border-radius: 10px 10px 0 0;
+            background: var(--c-soft);
             font-weight: 600;
             font-size: 0.95rem;
-            color: #334155;
+            color: #065f46;
         }
 
         .card-body { padding: 1.25rem; }
@@ -48,7 +55,7 @@
             display: block;
             font-size: 0.7rem;
             font-weight: 600;
-            color: #64748b;
+            color: var(--c-accent-dark);
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 0.35rem;
@@ -57,7 +64,7 @@
         .field {
             width: 100%;
             padding: 0.55rem 0.75rem;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #a7f3d0;
             border-radius: 7px;
             font-size: 0.9rem;
             background: #fff;
@@ -66,10 +73,10 @@
         }
         .field:focus {
             outline: none;
-            border-color: #94a3b8;
-            box-shadow: 0 0 0 3px rgba(148,163,184,0.18);
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
         }
-        .field[readonly] { background: #f8fafc; color: #64748b; }
+        .field[readonly] { background: var(--c-soft); color: var(--c-accent-dark); }
 
         .btn {
             width: 100%;
@@ -81,14 +88,16 @@
             cursor: pointer;
             transition: background .15s, border-color .15s;
         }
-        .btn-primary { background: var(--c-ink); color: #fff; }
-        .btn-primary:hover { background: #0f172a; }
-        .btn-outline { background: #fff; color: #334155; border-color: #cbd5e1; }
-        .btn-outline:hover { background: #f8fafc; }
+        .btn-primary { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; }
+        .btn-primary:hover { background: var(--c-accent-dark); }
+        .btn-outline { background: #fff; color: #065f46; border-color: #a7f3d0; }
+        .btn-outline:hover { background: var(--c-soft); }
+        /* Destructive action stays red on purpose */
         .btn-ghost-danger { background: #fff; color: #dc2626; border-color: #fecaca; }
         .btn-ghost-danger:hover { background: #fef2f2; }
 
         table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
+        thead tr { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
         thead th {
             text-align: left;
             padding: 0.6rem 0.75rem;
@@ -96,24 +105,23 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.03em;
-            color: #64748b;
-            border-bottom: 1px solid var(--c-line);
+            color: #fff;
             white-space: nowrap;
         }
         tbody td {
             padding: 0.55rem 0.75rem;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid var(--c-soft);
             white-space: nowrap;
         }
-        tbody tr:hover { background: #f8fafc; }
+        tbody tr:hover { background: #f0fdf4; }
 
         .pill {
             font-size: 0.7rem;
             font-weight: 600;
             padding: 0.15rem 0.6rem;
             border-radius: 999px;
-            background: #f1f5f9;
-            color: #475569;
+            background: var(--c-line);
+            color: var(--c-accent-dark);
         }
 
         .proc-item {
@@ -123,12 +131,12 @@
             gap: 0.5rem;
             padding: 0.7rem 0.85rem;
             border: 1px solid var(--c-line);
-            border-left: 3px solid var(--c-ink);
+            border-left: 3px solid var(--c-accent);
             border-radius: 7px;
             background: #fff;
         }
         .proc-remove {
-            color: #94a3b8;
+            color: #6ee7b7;
             font-weight: 700;
             cursor: pointer;
             line-height: 1;
@@ -136,22 +144,22 @@
         }
         .proc-remove:hover { color: #dc2626; }
 
-        /* Chart */
+        /* Chart: green frame; blue RH curves and red process lines keep their meaning */
         .grid-line { stroke: var(--c-grid); stroke-width: 1; }
-        .grid-line-major { stroke: #dbe3ec; stroke-width: 1; }
-        .axis path, .axis line { stroke: #cbd5e1; }
-        .axis text { fill: #475569; font-size: 11px; }
+        .grid-line-major { stroke: #c6ecd9; stroke-width: 1; }
+        .axis path, .axis line { stroke: #6ee7b7; }
+        .axis text { fill: var(--c-accent-dark); font-size: 11px; }
         .rh-curve { fill: none; stroke: var(--c-cool); stroke-width: 1.4; opacity: 0.55; }
         .rh-curve-100 { stroke: var(--c-cool); stroke-width: 2; opacity: 0.9; }
-        .enthalpy-line { fill: none; stroke: #cbd5e1; stroke-width: 1; opacity: 0.7; stroke-dasharray: 4,3; }
-        .comfort-zone { fill: #2563eb; opacity: 0.07; stroke: #93c5fd; stroke-width: 1; stroke-dasharray: 4,3; }
+        .enthalpy-line { fill: none; stroke: #a7f3d0; stroke-width: 1; opacity: 0.9; stroke-dasharray: 4,3; }
+        .comfort-zone { fill: #10b981; opacity: 0.1; stroke: #34d399; stroke-width: 1; stroke-dasharray: 4,3; }
         .process-line { fill: none; stroke: var(--c-heat); stroke-width: 2.5; marker-end: url(#arrow); }
-        .state-point { fill: var(--c-ink); stroke: #fff; stroke-width: 2.5; cursor: pointer; }
-        .state-point:hover { fill: #0f172a; }
+        .state-point { fill: var(--c-accent); stroke: #fff; stroke-width: 2.5; cursor: pointer; }
+        .state-point:hover { fill: var(--c-accent-dark); }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-thumb { background: #a7f3d0; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6ee7b7; }
     </style>
 </head>
 <body>
@@ -160,12 +168,12 @@
         <header class="card mb-5">
             <div class="flex items-center justify-between px-6 py-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-800">Psychrometric Chart Simulator</h1>
-                    <p class="text-slate-500 text-sm mt-0.5">Interactive HVAC process analysis</p>
+                    <h1 class="text-2xl font-bold text-emerald-800">Psychrometric Chart Simulator</h1>
+                    <p class="text-emerald-600 text-sm mt-0.5">Interactive HVAC process analysis</p>
                 </div>
                 <div class="text-right">
-                    <div class="text-xs text-slate-400 uppercase tracking-wide">Pressure</div>
-                    <div class="text-lg font-semibold text-slate-700"><span id="pressure">101.325</span> kPa</div>
+                    <div class="text-xs text-emerald-500 uppercase tracking-wide">Pressure</div>
+                    <div class="text-lg font-semibold text-emerald-700"><span id="pressure">101.325</span> kPa</div>
                 </div>
             </div>
         </header>
@@ -254,7 +262,7 @@
                                 </tr>
                             </thead>
                             <tbody id="states-table">
-                                <tr><td colspan="8" class="text-center text-slate-400 italic py-5">No data</td></tr>
+                                <tr><td colspan="8" class="text-center text-emerald-500 italic py-5">No data</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -272,7 +280,7 @@
                                 </tr>
                             </thead>
                             <tbody id="changes-table">
-                                <tr><td colspan="8" class="text-center text-slate-400 italic py-5">No processes</td></tr>
+                                <tr><td colspan="8" class="text-center text-emerald-500 italic py-5">No processes</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -311,14 +319,14 @@
                     </div>
                     <div class="card-body">
                         <div id="process-list" class="space-y-2">
-                            <p class="text-slate-400 italic text-sm text-center py-3">No steps yet</p>
+                            <p class="text-emerald-500 italic text-sm text-center py-3">No steps yet</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <footer class="text-center text-xs text-slate-400 mt-6 pb-4">
+        <footer class="text-center text-xs text-emerald-500 mt-6 pb-4">
             Calculations per ASHRAE psychrometric relations · For engineering reference
         </footer>
     </div>

@@ -8,11 +8,7 @@ No build step, no server. Pure HTML + JavaScript (D3.js for the chart, Tailwind 
 
 ## Live demo
 
-Once GitHub Pages is enabled for this repository (see below), the app is served at:
-
-```
-https://Thomas3A.github.io/Mollier-Diagram/
-```
+**https://thomas3a.github.io/Mollier-Diagram/**
 
 ## Running locally
 
@@ -45,14 +41,11 @@ Steps store their parameters, so editing or removing a step recomputes the whole
 | `psychro.js` | Psychrometric calculation engine (ASHRAE relations)|
 | `app.js`     | UI logic, process handling, D3 chart rendering     |
 
-## Enabling GitHub Pages
+## GitHub Pages
 
-The repo is Pages-ready (static files at the root, plus a `.nojekyll` marker). To publish:
-
-1. Go to the repository **Settings → Pages**.
-2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
-3. Select the branch you want to serve (e.g. `main`) and folder **`/ (root)`**, then **Save**.
-4. After a minute the site is live at the URL above.
+The site is served by GitHub Pages from the root of the `main` branch (static files plus a
+`.nojekyll` marker). Every push or merge to `main` redeploys it automatically; the
+*pages build and deployment* run under **Actions** shows the status.
 
 ## Notes
 
