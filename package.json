@@ -1,0 +1,11 @@
+{
+  "name": "mollier-diagram",
+  "version": "4.0.0",
+  "description": "Interactief Mollier h,x-diagram en psychrometrisch diagram voor luchtbehandelingsprocessen",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "npx --yes http-server -c-1 -p 8080 ."
+  }
+}

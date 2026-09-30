@@ -1,337 +1,248 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mollier h,x-diagram</title>
+    <meta name="description" content="Interactief Mollier h,x-diagram en psychrometrisch diagram: luchtbehandelingsprocessen, vermogens en waterdebieten volgens ASHRAE 2017.">
     <meta name="theme-color" content="#059669">
-    <title>Psychrometric Chart Simulator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-        :root {
-            --c-heat:   #dc2626;   /* red   - heating / process lines */
-            --c-cool:   #2563eb;   /* blue  - cooling / RH curves */
-            --c-ink:    #064e3b;   /* emerald-900 - primary text */
-            --c-accent: #059669;   /* emerald-600 - buttons, points, accents */
-            --c-accent-dark: #047857; /* emerald-700 - hover, labels */
-            --c-soft:   #ecfdf5;   /* emerald-50  - soft fills */
-            --c-line:   #d1fae5;   /* emerald-100 - borders */
-            --c-grid:   #e6f6ee;   /* gridlines */
-        }
-
-        * { font-family: 'Inter', sans-serif; }
-
-        body {
-            background: #d1fae5 linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-            color: var(--c-ink);
-            min-height: 100vh;
-        }
-
-        .card {
-            background: #ffffff;
-            border: 1px solid var(--c-line);
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(6, 78, 59, 0.06);
-        }
-
-        .card-head {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.9rem 1.25rem;
-            border-bottom: 1px solid var(--c-line);
-            border-radius: 10px 10px 0 0;
-            background: var(--c-soft);
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: #065f46;
-        }
-
-        .card-body { padding: 1.25rem; }
-
-        .label {
-            display: block;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--c-accent-dark);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.35rem;
-        }
-
-        .field {
-            width: 100%;
-            padding: 0.55rem 0.75rem;
-            border: 1px solid #a7f3d0;
-            border-radius: 7px;
-            font-size: 0.9rem;
-            background: #fff;
-            color: var(--c-ink);
-            transition: border-color .15s, box-shadow .15s;
-        }
-        .field:focus {
-            outline: none;
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
-        }
-        .field[readonly] { background: var(--c-soft); color: var(--c-accent-dark); }
-
-        .btn {
-            width: 100%;
-            padding: 0.6rem 1rem;
-            border-radius: 7px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            border: 1px solid transparent;
-            cursor: pointer;
-            transition: background .15s, border-color .15s;
-        }
-        .btn-primary { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; }
-        .btn-primary:hover { background: var(--c-accent-dark); }
-        .btn-outline { background: #fff; color: #065f46; border-color: #a7f3d0; }
-        .btn-outline:hover { background: var(--c-soft); }
-        /* Destructive action stays red on purpose */
-        .btn-ghost-danger { background: #fff; color: #dc2626; border-color: #fecaca; }
-        .btn-ghost-danger:hover { background: #fef2f2; }
-
-        table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
-        thead tr { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        thead th {
-            text-align: left;
-            padding: 0.6rem 0.75rem;
-            font-size: 0.68rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            color: #fff;
-            white-space: nowrap;
-        }
-        tbody td {
-            padding: 0.55rem 0.75rem;
-            border-bottom: 1px solid var(--c-soft);
-            white-space: nowrap;
-        }
-        tbody tr:hover { background: #f0fdf4; }
-
-        .pill {
-            font-size: 0.7rem;
-            font-weight: 600;
-            padding: 0.15rem 0.6rem;
-            border-radius: 999px;
-            background: var(--c-line);
-            color: var(--c-accent-dark);
-        }
-
-        .proc-item {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 0.5rem;
-            padding: 0.7rem 0.85rem;
-            border: 1px solid var(--c-line);
-            border-left: 3px solid var(--c-accent);
-            border-radius: 7px;
-            background: #fff;
-        }
-        .proc-remove {
-            color: #6ee7b7;
-            font-weight: 700;
-            cursor: pointer;
-            line-height: 1;
-            padding: 0 0.25rem;
-        }
-        .proc-remove:hover { color: #dc2626; }
-
-        /* Chart: green frame; blue RH curves and red process lines keep their meaning */
-        .grid-line { stroke: var(--c-grid); stroke-width: 1; }
-        .grid-line-major { stroke: #c6ecd9; stroke-width: 1; }
-        .axis path, .axis line { stroke: #6ee7b7; }
-        .axis text { fill: var(--c-accent-dark); font-size: 11px; }
-        .rh-curve { fill: none; stroke: var(--c-cool); stroke-width: 1.4; opacity: 0.55; }
-        .rh-curve-100 { stroke: var(--c-cool); stroke-width: 2; opacity: 0.9; }
-        .enthalpy-line { fill: none; stroke: #a7f3d0; stroke-width: 1; opacity: 0.9; stroke-dasharray: 4,3; }
-        .comfort-zone { fill: #10b981; opacity: 0.1; stroke: #34d399; stroke-width: 1; stroke-dasharray: 4,3; }
-        .process-line { fill: none; stroke: var(--c-heat); stroke-width: 2.5; marker-end: url(#arrow); }
-        .state-point { fill: var(--c-accent); stroke: #fff; stroke-width: 2.5; cursor: pointer; }
-        .state-point:hover { fill: var(--c-accent-dark); }
-
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-thumb { background: #a7f3d0; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #6ee7b7; }
-    </style>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23059669'/%3E%3Cpath d='M7 25C12 23 19 17 25 7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M7 25 7 7M7 25 25 25' stroke='%23a7f3d0' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+    <script>
+        // Thema vóór de eerste render zetten (geen flits)
+        try {
+            var pr = JSON.parse(localStorage.getItem('mollier.prefs') || '{}');
+            if (pr.theme === 'light' || pr.theme === 'dark') document.documentElement.setAttribute('data-theme', pr.theme);
+        } catch (e) { /* geen opslag beschikbaar */ }
+    </script>
 </head>
 <body>
-    <div class="max-w-[1800px] mx-auto p-5">
-        <!-- Header -->
-        <header class="card mb-5">
-            <div class="flex items-center justify-between px-6 py-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-emerald-800">Psychrometric Chart Simulator</h1>
-                    <p class="text-emerald-600 text-sm mt-0.5">Interactive HVAC process analysis</p>
-                </div>
-                <div class="text-right">
-                    <div class="text-xs text-emerald-500 uppercase tracking-wide">Pressure</div>
-                    <div class="text-lg font-semibold text-emerald-700"><span id="pressure">101.325</span> kPa</div>
-                </div>
-            </div>
-        </header>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+            <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+            <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+            <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+            <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+            <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5"/><path d="M12 17.5h.01"/></symbol>
+            <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+            <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+            <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><circle cx="12" cy="12" r="2.5"/></symbol>
+            <symbol id="i-full" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 15c5-1 10-5 13-11"/></symbol>
+            <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+            <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+            <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+            <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+            <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+            <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+            <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+            <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+            <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></symbol>
+            <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+            <!-- Procescategorieën -->
+            <symbol id="c-heat" viewBox="0 0 24 24"><path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2.5 1.2-3.8 2.3-5 .4 1.5 1.2 2.5 2.2 3C11 8 11 5.5 12 3z"/></symbol>
+            <symbol id="c-cool" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/><path d="m9 4 3 2 3-2M9 20l3-2 3 2M4 10.5l3.5-.2L6 7M20 13.5l-3.5.2L18 17M4 13.5l3.5.2L6 17M20 10.5l-3.5-.2L18 7"/></symbol>
+            <symbol id="c-humidify" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M12 11v6M9 14h6"/></symbol>
+            <symbol id="c-dehumidify" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 14h6"/></symbol>
+            <symbol id="c-mix" viewBox="0 0 24 24"><path d="M4 5h4l8 14h4M4 19h4l3-5.2M13 10.2 16 5h4"/><path d="m18 3 2 2-2 2M18 17l2 2-2 2"/></symbol>
+            <symbol id="c-hr" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/><rect x="9" y="10" width="6" height="4" rx="1"/></symbol>
+            <symbol id="c-other" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></symbol>
+        </defs>
+    </svg>
 
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-5">
-            <!-- Left: Inputs -->
-            <div class="xl:col-span-1 space-y-5">
-                <div class="card">
-                    <div class="card-head">Settings</div>
-                    <div class="card-body space-y-3">
-                        <div>
-                            <label class="label">Altitude (m)</label>
-                            <input type="number" id="altitude" value="0" class="field" step="10">
-                        </div>
-                        <div>
-                            <label class="label">Air Flow (m³/h)</label>
-                            <input type="number" id="airflow" value="1000" class="field" step="100">
-                        </div>
-                        <div>
-                            <label class="label">Mass Flow (kg/s)</label>
-                            <input type="number" id="massflow" value="" readonly class="field">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head">Initial Air State</div>
-                    <div class="card-body space-y-3">
-                        <div>
-                            <label class="label">Dry Bulb Temperature (°C)</label>
-                            <input type="number" id="tdb" value="25" step="0.1" class="field">
-                        </div>
-                        <div>
-                            <label class="label">Second Property</label>
-                            <select id="param-type" class="field">
-                                <option value="rh">Relative Humidity (%)</option>
-                                <option value="twb">Wet Bulb Temp (°C)</option>
-                                <option value="tdew">Dew Point Temp (°C)</option>
-                                <option value="w">Humidity Ratio (g/kg)</option>
-                                <option value="h">Enthalpy (kJ/kg)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label">Value</label>
-                            <input type="number" id="param-value" value="50" step="0.1" class="field">
-                        </div>
-                        <button onclick="calculateInitialState()" class="btn btn-primary">Set Initial State</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head">Project</div>
-                    <div class="card-body space-y-2">
-                        <button onclick="saveProject()" class="btn btn-outline">Save</button>
-                        <button onclick="loadProject()" class="btn btn-outline">Load</button>
-                        <button onclick="exportData()" class="btn btn-outline">Export JSON</button>
-                        <button onclick="resetAll()" class="btn btn-ghost-danger">Reset All</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Center: Chart + tables -->
-            <div class="xl:col-span-2 space-y-5">
-                <div class="card">
-                    <div class="card-head">
-                        Psychrometric Chart
-                        <div class="ml-auto flex gap-2">
-                            <span class="pill" style="color:#2563eb">RH lines</span>
-                            <span class="pill" style="color:#dc2626">Process</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <svg id="chart" width="100%" height="640"></svg>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head">State Points</div>
-                    <div class="card-body overflow-x-auto">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Pt</th><th>T<sub>db</sub> °C</th><th>T<sub>wb</sub> °C</th>
-                                    <th>T<sub>dew</sub> °C</th><th>RH %</th><th>x g/kg</th>
-                                    <th>h kJ/kg</th><th>ρ kg/m³</th>
-                                </tr>
-                            </thead>
-                            <tbody id="states-table">
-                                <tr><td colspan="8" class="text-center text-emerald-500 italic py-5">No data</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head">Process Changes & Loads</div>
-                    <div class="card-body overflow-x-auto">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Process</th><th>ΔT °C</th><th>Δx g/kg</th><th>Δh kJ/kg</th>
-                                    <th>Q<sub>tot</sub> kW</th><th>Q<sub>sens</sub> kW</th>
-                                    <th>Q<sub>lat</sub> kW</th><th>Water kg/h</th>
-                                </tr>
-                            </thead>
-                            <tbody id="changes-table">
-                                <tr><td colspan="8" class="text-center text-emerald-500 italic py-5">No processes</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right: Processes -->
-            <div class="xl:col-span-1 space-y-5">
-                <div class="card">
-                    <div class="card-head">Add Process</div>
-                    <div class="card-body space-y-3">
-                        <div>
-                            <label class="label">Category</label>
-                            <select id="process-category" onchange="updateProcessTypes()" class="field">
-                                <option value="heating">Heating</option>
-                                <option value="cooling">Cooling</option>
-                                <option value="humidification">Humidification</option>
-                                <option value="dehumidification">Dehumidification</option>
-                                <option value="mixing">Mixing</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label">Type</label>
-                            <select id="process-type" onchange="updateProcessInputs()" class="field"></select>
-                        </div>
-                        <div id="process-inputs" class="space-y-3"></div>
-                        <button onclick="addProcess()" class="btn btn-primary">Add Step</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head">
-                        Process Steps
-                        <span id="process-count" class="ml-auto pill">0</span>
-                    </div>
-                    <div class="card-body">
-                        <div id="process-list" class="space-y-2">
-                            <p class="text-emerald-500 italic text-sm text-center py-3">No steps yet</p>
-                        </div>
-                    </div>
-                </div>
+    <header class="topbar">
+        <div class="brand">
+            <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"/><path class="logo-grid" d="M8 24V8M8 24h16"/><path class="logo-curve" d="M8 24c5-2 11-7 16-16"/><path class="logo-curve2" d="M8 24c7-1 12-4 16-9"/></svg>
+            <div class="brand-text">
+                <h1 data-i18n="app.title">Mollier h,x-diagram</h1>
+                <span data-i18n="app.subtitle">Luchtbehandeling · processen · belastingen</span>
             </div>
         </div>
+        <input id="project-name" class="project-name" spellcheck="false" data-i18n-aria="tb.projectName">
+        <nav class="toolbar">
+            <div class="seg" id="chart-type" role="tablist">
+                <button type="button" data-type="mollier" data-i18n="chartType.mollier">Mollier h,x</button>
+                <button type="button" data-type="psychro" data-i18n="chartType.psychro">Psychrometrisch</button>
+            </div>
+            <span class="tb-sep"></span>
+            <button type="button" class="icon-btn" id="btn-undo" data-i18n-title="tb.undo"><svg><use href="#i-undo"/></svg></button>
+            <button type="button" class="icon-btn" id="btn-redo" data-i18n-title="tb.redo"><svg><use href="#i-redo"/></svg></button>
+            <div class="menu" id="menu-file">
+                <button type="button" class="tb-btn" id="btn-file" aria-haspopup="true" aria-expanded="false"><svg><use href="#i-file"/></svg><span data-i18n="tb.file">Bestand</span></button>
+                <div class="menu-pop" role="menu">
+                    <button type="button" data-action="new" data-i18n="menu.new"></button>
+                    <button type="button" data-action="example" data-i18n="menu.example"></button>
+                    <button type="button" data-action="open" data-i18n="menu.open"></button>
+                    <button type="button" data-action="save" data-i18n="menu.save"></button>
+                    <hr>
+                    <button type="button" data-action="png" data-i18n="menu.png"></button>
+                    <button type="button" data-action="svg" data-i18n="menu.svg"></button>
+                    <button type="button" data-action="csv" data-i18n="menu.csv"></button>
+                    <button type="button" data-action="print" data-i18n="menu.print"></button>
+                </div>
+            </div>
+            <button type="button" class="tb-btn" id="btn-share"><svg><use href="#i-share"/></svg><span data-i18n="tb.share">Delen</span></button>
+            <span class="tb-sep"></span>
+            <button type="button" class="icon-btn lang-btn" id="btn-lang" data-i18n-title="tb.lang">EN</button>
+            <button type="button" class="icon-btn" id="btn-theme" data-i18n-title="tb.theme"><svg><use href="#i-moon"/></svg></button>
+            <button type="button" class="icon-btn" id="btn-help" data-i18n-title="tb.help"><svg><use href="#i-help"/></svg></button>
+        </nav>
+    </header>
 
-        <footer class="text-center text-xs text-emerald-500 mt-6 pb-4">
-            Calculations per ASHRAE psychrometric relations · For engineering reference
-        </footer>
-    </div>
+    <main class="layout">
+        <aside class="sidebar">
+            <!-- Scenario's -->
+            <section class="panel">
+                <div class="panel-head">
+                    <h2 data-i18n="panel.scenarios">Scenario's</h2>
+                    <button type="button" class="chip-btn" id="btn-scn-add"><svg><use href="#i-plus"/></svg><span data-i18n="scn.add">Nieuw</span></button>
+                </div>
+                <div class="scn-tabs" id="scn-tabs" role="tablist"></div>
+                <div class="scn-edit">
+                    <input id="scn-name" class="input" spellcheck="false" data-i18n-aria="scn.name">
+                    <div class="swatches" id="scn-colors" data-i18n-aria="scn.color"></div>
+                    <button type="button" class="icon-btn sm" id="btn-scn-visible" data-i18n-title="scn.visible"><svg><use href="#i-eye"/></svg></button>
+                    <button type="button" class="icon-btn sm" id="btn-scn-dup" data-i18n-title="scn.duplicate"><svg><use href="#i-copy"/></svg></button>
+                    <button type="button" class="icon-btn sm danger" id="btn-scn-del" data-i18n-title="scn.delete"><svg><use href="#i-x"/></svg></button>
+                </div>
+            </section>
 
-    <script src="psychro.js"></script>
-    <script src="app.js"></script>
+            <!-- Beginpunt -->
+            <section class="panel">
+                <div class="panel-head"><h2 data-i18n="panel.start">Beginpunt &amp; luchtdebiet</h2><span class="pt-badge" id="start-badge">1</span></div>
+                <label class="fld">
+                    <span class="fld-lbl" data-i18n="start.pair">Invoer met</span>
+                    <select id="start-pair" class="input"></select>
+                </label>
+                <div class="grid2">
+                    <label class="fld"><span class="fld-lbl" id="start-a-lbl"></span><span class="input-unit"><input id="start-a" class="input" inputmode="decimal" autocomplete="off"><em id="start-a-unit"></em></span></label>
+                    <label class="fld"><span class="fld-lbl" id="start-b-lbl"></span><span class="input-unit"><input id="start-b" class="input" inputmode="decimal" autocomplete="off"><em id="start-b-unit"></em></span></label>
+                </div>
+                <div class="state-strip" id="start-summary"></div>
+                <div class="grid2">
+                    <label class="fld"><span class="fld-lbl" data-i18n="start.flow">Luchtdebiet</span><input id="flow-value" class="input" inputmode="decimal" autocomplete="off"></label>
+                    <label class="fld"><span class="fld-lbl">&nbsp;</span>
+                        <select id="flow-mode" class="input">
+                            <option value="volume" data-i18n="start.flowVolume"></option>
+                            <option value="mass" data-i18n="start.flowMass"></option>
+                        </select>
+                    </label>
+                </div>
+                <p class="hint" id="flow-summary"></p>
+            </section>
+
+            <!-- Processtap toevoegen / bewerken -->
+            <section class="panel" id="panel-form">
+                <div class="panel-head"><h2 id="form-title" data-i18n="panel.add">Processtap toevoegen</h2></div>
+                <div class="cat-grid" id="cat-grid" role="tablist"></div>
+                <label class="fld" id="type-fld">
+                    <span class="fld-lbl" data-i18n="form.process">Proces</span>
+                    <select id="step-type" class="input"></select>
+                </label>
+                <p class="hint type-hint" id="type-hint"></p>
+                <div id="step-fields" class="fields"></div>
+                <div class="preview-box" id="step-preview" aria-live="polite"></div>
+                <div class="btn-row">
+                    <button type="button" class="btn primary" id="btn-step-submit" data-i18n="form.add">Toevoegen</button>
+                    <button type="button" class="btn" id="btn-step-cancel" data-i18n="form.cancel" hidden>Annuleren</button>
+                </div>
+            </section>
+
+            <!-- Processtappen -->
+            <section class="panel">
+                <div class="panel-head"><h2 data-i18n="panel.steps">Processtappen</h2><span class="count" id="step-count"></span></div>
+                <ol class="step-list" id="step-list"></ol>
+            </section>
+
+            <!-- Systeem -->
+            <section class="panel">
+                <div class="panel-head"><h2 data-i18n="panel.system">Systeem</h2></div>
+                <div class="grid2">
+                    <label class="fld"><span class="fld-lbl" data-i18n="sys.pressureBy">Luchtdruk via</span>
+                        <select id="p-mode" class="input">
+                            <option value="altitude" data-i18n="sys.altitude">Hoogte</option>
+                            <option value="pressure" data-i18n="sys.pressure">Druk</option>
+                        </select>
+                    </label>
+                    <label class="fld"><span class="fld-lbl" id="p-lbl">&nbsp;</span><span class="input-unit"><input id="p-value" class="input" inputmode="decimal" autocomplete="off"><em id="p-unit">m</em></span></label>
+                </div>
+                <p class="hint" id="p-summary"></p>
+            </section>
+        </aside>
+
+        <section class="content">
+            <div class="kpis" id="kpis"></div>
+
+            <div class="card chart-card">
+                <div class="chart-head">
+                    <div class="chart-title" id="chart-title"></div>
+                    <div class="chart-tools">
+                        <div class="menu" id="menu-range">
+                            <button type="button" class="tb-btn sm" id="btn-range" aria-haspopup="true" aria-expanded="false"><svg><use href="#i-sliders"/></svg><span data-i18n="chart.range">Bereik</span></button>
+                            <div class="menu-pop wide" id="range-pop"></div>
+                        </div>
+                        <span class="tb-sep"></span>
+                        <button type="button" class="icon-btn sm" id="btn-zoom-out" data-i18n-title="chart.zoomOut"><svg><use href="#i-minus"/></svg></button>
+                        <button type="button" class="icon-btn sm" id="btn-zoom-in" data-i18n-title="chart.zoomIn"><svg><use href="#i-plus"/></svg></button>
+                        <button type="button" class="icon-btn sm" id="btn-fit" data-i18n-title="chart.fit"><svg><use href="#i-fit"/></svg></button>
+                        <button type="button" class="icon-btn sm" id="btn-reset" data-i18n-title="chart.reset"><svg><use href="#i-full"/></svg></button>
+                    </div>
+                </div>
+                <div class="chart-wrap" id="chart-wrap">
+                    <svg id="chart"></svg>
+                    <div class="wheel-hint" id="wheel-hint" data-i18n="chart.wheelHint"></div>
+                </div>
+                <div class="statusbar" id="statusbar" aria-live="off"></div>
+                <div class="chart-foot">
+                    <div class="layer-chips" id="layer-chips"></div>
+                    <p class="hint chart-hint" data-i18n="chart.hint"></p>
+                </div>
+            </div>
+
+            <div class="card results">
+                <div class="results-head">
+                    <div class="tabs" role="tablist">
+                        <button type="button" class="tab" data-tab="states" data-i18n="tbl.states">Toestanden</button>
+                        <button type="button" class="tab" data-tab="steps" data-i18n="tbl.steps">Processen</button>
+                    </div>
+                    <span class="results-scn" id="results-scn"></span>
+                    <button type="button" class="tb-btn sm" id="btn-csv"><svg><use href="#i-download"/></svg><span data-i18n="tbl.csv">CSV</span></button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="tbl-states"></table>
+                    <table class="data-table" id="tbl-steps" hidden></table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer"><span data-i18n="app.footer"></span> · <span id="version">v4.0</span></footer>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <dialog class="dialog" id="dlg-help">
+        <div class="dialog-head"><h2 data-i18n="help.title">Help</h2><button type="button" class="icon-btn sm" data-close data-i18n-title="help.close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="dialog-body">
+            <p data-i18n="help.intro"></p>
+            <h3 data-i18n="help.mouse"></h3>
+            <ul><li data-i18n="help.m1"></li><li data-i18n="help.m2"></li><li data-i18n="help.m3"></li><li data-i18n="help.m4"></li><li data-i18n="help.m5"></li></ul>
+            <h3 data-i18n="help.keys"></h3>
+            <ul><li data-i18n="help.k1"></li><li data-i18n="help.k2"></li><li data-i18n="help.k3"></li><li data-i18n="help.k4"></li><li data-i18n="help.k5"></li></ul>
+            <h3 data-i18n="help.method"></h3>
+            <ul><li data-i18n="help.me1"></li><li data-i18n="help.me2"></li><li data-i18n="help.me3"></li></ul>
+        </div>
+    </dialog>
+
+    <input type="file" id="file-input" accept=".json,application/json" hidden>
+
+    <script src="vendor/d3.min.js"></script>
+    <script src="js/psychro.js"></script>
+    <script src="js/processes.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
