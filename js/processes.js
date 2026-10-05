@@ -2,7 +2,8 @@
  * processes.js — luchtbehandelingsprocessen en scenario-doorrekening
  *
  * Elke processtap is parametrisch: { type, params }. apply() geeft de eindtoestand,
- * het te tekenen pad (lijst {t, x, h}) en hulppunten (ADP, tweede luchtstroom, ...).
+ * het te tekenen pad (lijst {t, x, h}) en hulppunten (ADP, tweede luchtstroom, ...);
+ * drain = true betekent dat onttrokken water als condensaat (water/ijs bij t2) afvloeit.
  * Invoer in UI-eenheden: x in g/kg, RH in %, vermogen in kW, water in kg/h.
  * De droge-luchtmassastroom ṁ [kg/s] blijft constant, behalve bij mengen.
  */
@@ -135,12 +136,14 @@
                         s2 = P.state(P.tFromSatPres(s.pw / (v / 100)), s.x, p); break;
                     case 'power': {
                         needFlow(mdot);
-                        const h2 = s.h - positive(v) / mdot;
+                        // Q = ṁ·[(h1 − h2) − (x1 − x2)·h_w(t2)]; boven het dauwpunt is er geen condensaat
+                        const target = s.h - positive(v) / mdot;
                         const tdp = s.fog ? s.t : s.tdp;
                         const hd = s.fog ? s.h : P.enthalpy(tdp, s.x);
-                        if (h2 >= hd) s2 = P.fromHx(h2, s.x, p);
+                        if (target >= hd) s2 = P.fromHx(target, s.x, p);
                         else {
-                            const t2 = P.solve((t) => P.hSat(t, p), P.T_LO, tdp, h2);
+                            const g = (t) => P.hSat(t, p) + (s.x - P.satHumRatio(t, p)) * P.hCondensed(t);
+                            const t2 = P.solve(g, P.T_LO, tdp, target);
                             if (!isFinite(t2)) fail('ERR_NO_SOLUTION');
                             s2 = satState(t2, p);
                         }
@@ -149,7 +152,7 @@
                     default: fail('ERR_INVALID');
                 }
                 if (!(s2.t < s.t)) fail('ERR_COOL_TARGET');
-                return { state: s2, path: coolPath(s, s2, p) };
+                return { state: s2, path: coolPath(s, s2, p), drain: true };
             }
         },
 
@@ -174,10 +177,17 @@
                     bf = prm.value;
                     if (!(bf >= 0 && bf < 1)) fail('ERR_BF_RANGE');
                 }
-                const s2 = dry ? P.state(tA + bf * (s.t - tA), s.x, p) : lerpState(sA, s, bf, p);
+                let s2 = dry ? P.state(tA + bf * (s.t - tA), s.x, p) : lerpState(sA, s, bf, p);
+                const path = dry ? line(s, s2, p, 2) : line(s, s2, p);
+                if (s2.fog) {
+                    // Zeer vochtige intrede: de rechte lijn naar het ADP loopt door het mistgebied.
+                    // De druppels slaan neer op de lamellen en verlaten de batterij als condensaat;
+                    // de lucht treedt verzadigd uit bij dezelfde t (koellast blijft gelijk).
+                    s2 = satState(s2.t, p);
+                    path.push(pt(s2));
+                }
                 return {
-                    state: s2,
-                    path: dry ? line(s, s2, p, 2) : line(s, s2, p),
+                    state: s2, path, drain: true,
                     aux: [{ role: 'adp', state: sA, from: dry ? null : s2 }],
                     info: { bf, tAdp: tA, dry }
                 };
@@ -199,7 +209,7 @@
                     aux = [{ role: 'adp', state: sA, from: s2 }];
                     info = { bf: (f - 1) / f, tAdp: sA.t };
                 }
-                return { state: s2, path: line(s, s2, p), aux, info };
+                return { state: s2, path: line(s, s2, p), aux, info, drain: true };
             }
         },
 
@@ -350,7 +360,7 @@
                 const e = prm.eff / 100;
                 if (!(e > 0 && e <= 1)) fail('ERR_EFF_RANGE');
                 const t2 = s.t + e * (sr.t - s.t);
-                let s2, path;
+                let s2, path, drain = false;
                 if (prm.hrType === 'enthalpy') {
                     const ex = prm.effX / 100;
                     if (!(ex >= 0 && ex <= 1)) fail('ERR_EFF_RANGE');
@@ -360,11 +370,12 @@
                 } else if (t2 < s.t) {
                     s2 = coolTo(s, t2, p);        // zomer: toevoerlucht wordt gekoeld
                     path = coolPath(s, s2, p);
+                    drain = true;
                 } else {
                     s2 = P.state(t2, s.x, p);
                     path = line(s, s2, p, 2);
                 }
-                return { state: s2, path, aux: [{ role: 'return', state: sr, from: null, drag: true }], info: { eff: prm.eff } };
+                return { state: s2, path, drain, aux: [{ role: 'return', state: sr, from: null, drag: true }], info: { eff: prm.eff } };
             }
         },
 
@@ -528,7 +539,9 @@
                     qt: null, qs: null, ql: null, shr: null, water: 0
                 };
                 if (T.kind !== 'mix' && m > 0) {
-                    r.qt = m * dh;
+                    // Condensaat verlaat de batterij met enthalpie h_w(t2) (ASHRAE: q = ṁ·[(h1 − h2) − (x1 − x2)·h_w2])
+                    const hDrain = out.drain && dx < 0 ? -dx * P.hCondensed(end.t) : 0;
+                    r.qt = m * (dh + hDrain);
                     r.qs = m * (P.CP_DA + P.CP_V * (cur.x - cur.xl)) * dt;
                     r.ql = r.qt - r.qs;
                     r.shr = Math.abs(r.qt) > 1e-9 ? r.qs / r.qt : null;

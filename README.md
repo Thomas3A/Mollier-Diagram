@@ -53,7 +53,12 @@ Geen build-stap, geen server: statische HTML + JavaScript. Werkt ook offline (D3
 ASHRAE Handbook – Fundamentals 2017, hoofdstuk 1:
 verzadigingsdampdruk boven water en ijs volgens Hyland-Wexler (eq. 5–6), dauwpunt door inversie
 (Newton-Raphson), natteboltemperatuur eq. 33/35, specifiek volume en dichtheid eq. 26–28,
-luchtdruk uit hoogte eq. 3. Vermogens: Q = ṁ_L · Δh met ṁ_L de droge-luchtmassastroom.
+luchtdruk uit hoogte eq. 3. Vermogens: Q = ṁ_L · Δh met ṁ_L de droge-luchtmassastroom; bij koelen met
+condensatie gaat de enthalpie van het condensaat eraf: Q = ṁ_L · [(h₁ − h₂) − (x₁ − x₂) · h_w(t₂)] (ASHRAE).
+Loopt de rechte lijn van een koelbatterij naar het ADP door het mistgebied (zeer vochtige intrede), dan
+slaan de druppels neer als condensaat en treedt de lucht verzadigd uit bij dezelfde temperatuur.
+Stoombevochtiging gebruikt Δh/Δx = 2501 + 1,86 · t_stoom (Mollier-conventie; ≈ 0,4 % boven de
+stoomtabel bij 100 °C, effect op t₂ ≈ 0,05 K).
 
 De rekenkern is getest tegen **PsychroLib** (de ASHRAE-referentie-implementatie) over −30…60 °C,
 5…100 % RH en twee drukken: afwijking in x, h, v en ρ < 1·10⁻⁹, natteboltemperatuur < 0,002 K.

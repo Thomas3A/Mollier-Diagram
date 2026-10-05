@@ -65,7 +65,7 @@
         typeHint: {
             heat: 'Voelbare verwarming: x blijft gelijk, lijn loodrecht omhoog in het Mollier-diagram.',
             cool: 'Ideale koeling: bij constante x tot het dauwpunt, daarna langs de verzadigingslijn (condensatie).',
-            coil: 'Uittrede ligt op de rechte lijn naar het apparaatdauwpunt (ADP). BF = aandeel lucht dat de batterij „mist”.',
+            coil: 'Uittrede ligt op de rechte lijn naar het apparaatdauwpunt (ADP). BF = aandeel lucht dat de batterij „mist”. Valt die lijn in het mistgebied, dan slaan de druppels neer als condensaat en treedt de lucht verzadigd uit.',
             cooldehum: 'Rechte proceslijn naar het opgegeven eindpunt; het bijbehorende ADP en de BF worden afgeleid.',
             adiabatic: 'Verdampingsbevochtiging langs de natteboltemperatuurlijn (≈ h constant). 100 % = verzadigd.',
             steam: 'Stoombevochtiging: richting Δh/Δx = h van de stoom; t stijgt licht.',
@@ -168,7 +168,8 @@
             linkCopied: 'Deel-link gekopieerd naar het klembord.', linkShow: 'Kopieer deze link:', shared: 'Gedeeld project geladen.',
             migrated: 'Project uit de vorige versie overgenomen.', newProject: 'Nieuw project gestart.', example: 'Voorbeeldproject geladen.',
             undo: 'Ongedaan gemaakt', redo: 'Opnieuw uitgevoerd', stepAdded: 'Stap toegevoegd.', stepUpdated: 'Stap bijgewerkt.',
-            pointAdded: 'Vrij punt toegevoegd op {t} °C / {x} g/kg.', startSet: 'Beginpunt ingesteld.', exportFail: 'Exporteren mislukt.'
+            pointAdded: 'Vrij punt toegevoegd op {t} °C / {x} g/kg.', startSet: 'Beginpunt ingesteld.', exportFail: 'Exporteren mislukt.',
+            eggOn: 'Hej! MÖLLIER is in elkaar gezet — er zijn geen schroefjes over.', eggOff: 'Weer terug in de standaardstijl.'
         },
         confirm: { newProject: 'Nieuw leeg project starten? (Ongedaan maken blijft mogelijk.)' },
         example: {
@@ -229,7 +230,7 @@
             method: 'Rekenmethode',
             me1: 'Verzadigingsdampdruk boven water en ijs volgens Hyland-Wexler (ASHRAE 2017, eq. 5–6); natteboltemperatuur eq. 33/35; dichtheid en specifiek volume eq. 26–28.',
             me2: 'Het Mollier-diagram gebruikt de klassieke scheve coördinaten: verticaal (h − 2501·x)/1,006, zodat isothermen licht waaieren en isenthalpen recht zijn. In het mistgebied knikken de isothermen.',
-            me3: 'Vermogens: Q = ṁ_L · Δh, met ṁ_L de droge-luchtmassastroom (volumestroom gedeeld door het specifiek volume in het beginpunt). Q_s = ṁ_L · (1,006 + 1,86·x₁) · Δt, Q_l = Q − Q_s.'
+            me3: 'Vermogens: Q = ṁ_L · Δh, met ṁ_L de droge-luchtmassastroom (volumestroom gedeeld door het specifiek volume in het beginpunt). Bij koelen met condensatie gaat de enthalpie van het condensaat eraf: Q = ṁ_L · [Δh − Δx · c_w · t₂]. Q_s = ṁ_L · (1,006 + 1,86·x₁) · Δt, Q_l = Q − Q_s.'
         },
         units: { kPa: 'kPa', m: 'm' }
     };
@@ -294,7 +295,7 @@
         typeHint: {
             heat: 'Sensible heating: x stays constant, a vertical line in the Mollier chart.',
             cool: 'Ideal cooling: constant x down to the dew point, then along the saturation line (condensation).',
-            coil: 'Outlet lies on the straight line towards the apparatus dew point (ADP). BF = share of air bypassing the coil.',
+            coil: 'Outlet lies on the straight line towards the apparatus dew point (ADP). BF = share of air bypassing the coil. If that line enters the fog region, the droplets are drained as condensate and the air leaves saturated.',
             cooldehum: 'Straight process line to the given end state; the implied ADP and BF are derived.',
             adiabatic: 'Evaporative humidification along the wet-bulb line (≈ constant h). 100 % = saturated.',
             steam: 'Steam humidification: direction Δh/Δx = steam enthalpy; t rises slightly.',
@@ -397,7 +398,8 @@
             linkCopied: 'Share link copied to clipboard.', linkShow: 'Copy this link:', shared: 'Shared project loaded.',
             migrated: 'Project from the previous version imported.', newProject: 'New project started.', example: 'Example project loaded.',
             undo: 'Undone', redo: 'Redone', stepAdded: 'Step added.', stepUpdated: 'Step updated.',
-            pointAdded: 'Free point added at {t} °C / {x} g/kg.', startSet: 'Start point set.', exportFail: 'Export failed.'
+            pointAdded: 'Free point added at {t} °C / {x} g/kg.', startSet: 'Start point set.', exportFail: 'Export failed.',
+            eggOn: 'Hej! MÖLLIER is assembled — no screws left over.', eggOff: 'Back to the standard style.'
         },
         confirm: { newProject: 'Start a new empty project? (Undo remains possible.)' },
         example: {
@@ -458,7 +460,7 @@
             method: 'Method',
             me1: 'Saturation pressure over water and ice per Hyland-Wexler (ASHRAE 2017, eq. 5–6); wet bulb eq. 33/35; density and specific volume eq. 26–28.',
             me2: 'The Mollier chart uses the classic oblique coordinates: vertical (h − 2501·x)/1.006, so isotherms fan slightly and enthalpy lines are straight. Isotherms kink in the fog region.',
-            me3: 'Powers: Q = ṁ_a · Δh, with ṁ_a the dry-air mass flow (volume flow divided by the specific volume at the start point). Q_s = ṁ_a · (1.006 + 1.86·x₁) · Δt, Q_l = Q − Q_s.'
+            me3: 'Powers: Q = ṁ_a · Δh, with ṁ_a the dry-air mass flow (volume flow divided by the specific volume at the start point). When cooling with condensation the condensate enthalpy is subtracted: Q = ṁ_a · [Δh − Δx · c_w · t₂]. Q_s = ṁ_a · (1.006 + 1.86·x₁) · Δt, Q_l = Q − Q_s.'
         },
         units: { kPa: 'kPa', m: 'm' }
     };

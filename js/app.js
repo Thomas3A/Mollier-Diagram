@@ -22,10 +22,14 @@
     const STORE_LEGACY = 'psychro-project';
 
     // Scenariokleuren: rood, violet, aqua, geel, blauw, magenta (gevalideerd op kleurenblindheid, eerste drie paarsgewijs)
+    // Verborgen huisstijl (IKEA): merkblauw en zwart voorop, daarna de Skapa-signaalkleuren; donker: geel en wit op blauw
     const PALETTE = {
         light: ['#e34948', '#4a3aa7', '#1baf7a', '#eda100', '#2a78d6', '#d55181'],
-        dark: ['#e66767', '#9085e9', '#199e70', '#c98500', '#3987e5', '#d55181']
+        dark: ['#e66767', '#9085e9', '#199e70', '#c98500', '#3987e5', '#d55181'],
+        ikeaLight: ['#0058a3', '#111111', '#f26a10', '#0a8a00', '#e00751', '#7a3e9d'],
+        ikeaDark: ['#ffdb00', '#ffffff', '#ffa36b', '#7fd47a', '#ff8fa8', '#c9a2f0']
     };
+    const IKEA_FONT_URL = 'https://fonts.googleapis.com/css2?family=Jost:wght@800&family=Noto+Sans:wght@400;500;600;700;800&display=swap';
     const RANGE_PRESETS = {
         standard: { tMin: -20, tMax: 50, xMax: 30 },
         hvac: { tMin: 0, tMax: 40, xMax: 20 },
@@ -33,7 +37,7 @@
         hot: { tMin: 0, tMax: 90, xMax: 80 }
     };
     const DEFAULT_PREFS = {
-        lang: 'nl', theme: 'auto', chart: 'mollier', tab: 'states',
+        lang: 'nl', theme: 'auto', brand: 'default', chart: 'mollier', tab: 'states',
         layers: { iso: true, rh: true, h: true, wb: false, rho: false, fog: true, comfort: true, edge: false, pw: true, values: false },
         range: Object.assign({}, RANGE_PRESETS.standard),
         comfort: { tMin: 20, tMax: 26, rhMin: 30, rhMax: 70, xMax: 11.5 }
@@ -266,6 +270,7 @@
         return {
             lang: I.languages.includes(p.lang) ? p.lang : DEFAULT_PREFS.lang,
             theme: ['auto', 'light', 'dark'].includes(p.theme) ? p.theme : 'auto',
+            brand: p.brand === 'ikea' ? 'ikea' : 'default',
             chart: p.chart === 'psychro' ? 'psychro' : 'mollier',
             tab: p.tab === 'steps' ? 'steps' : 'states',
             layers: Object.assign({}, DEFAULT_PREFS.layers, p.layers || {}),
@@ -299,7 +304,9 @@
     const themeResolved = () => (prefs.theme === 'auto'
         ? (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : prefs.theme);
-    const scnColor = (sc) => PALETTE[themeResolved()][sc.color % 6];
+    /** Kleurset voor diagram en scenario's: thema (licht/donker) × huisstijl. */
+    const skin = () => (prefs.brand === 'ikea' ? (themeResolved() === 'dark' ? 'ikeaDark' : 'ikeaLight') : themeResolved());
+    const scnColor = (sc) => PALETTE[skin()][sc.color % 6];
 
     function errMsg(e) {
         if (!e) return t('err.generic');
@@ -427,7 +434,7 @@
     }
 
     function renderScenarioPanel() {
-        const pal = PALETTE[themeResolved()];
+        const pal = PALETTE[skin()];
         $('#scn-colors').innerHTML = pal.map((c, i) => `<button type="button" class="swatch" data-color="${i}" style="--c:${c}" aria-label="${i + 1}"></button>`).join('');
         setVal($('#project-name'), project.name);
         renderScenarioTabs();
@@ -651,15 +658,17 @@
         const r = activeRes();
         const hasFlow = !r.error && r.mdot > 0;
         const tot = r.totals || { heating: 0, cooling: 0, recovered: 0, fan: 0, humid: 0, dehum: 0 };
+        // Decimalen apart, zodat een thema ze als prijskaartje verhoogd kan tonen
+        const num = (v, d) => { const s = fmt(v, d), i = s.search(/[.,]\d+$/); return i < 0 ? s : `${s.slice(0, i)}<span class="kpi-dec">${s.slice(i)}</span>`; };
         const tile = (lbl, color, v, unit, d, sub) => {
             const zero = !hasFlow || !(Math.abs(v) > 1e-9);
             return `<div class="kpi${zero ? ' zero' : ''}"><div class="kpi-lbl"><i class="kpi-icon" style="background:${color}"></i>${esc(lbl)}</div>`
-                + `<div class="kpi-val">${hasFlow ? fmt(v, d) : '—'}<small>${unit}</small></div><div class="kpi-sub">${sub || '&nbsp;'}</div></div>`;
+                + `<div class="kpi-val">${hasFlow ? num(v, d) : '—'}<small>${unit}</small></div><div class="kpi-sub">${sub || '&nbsp;'}</div></div>`;
         };
         const last = r.states.length ? r.states[r.states.length - 1] : null;
         const endTile = last
-            ? `<div class="kpi"><div class="kpi-lbl"><i class="kpi-icon" style="background:${scnColor(activeScn())}"></i>${esc(t('kpi.final'))} · ${last.n}</div>`
-                + `<div class="kpi-val">${fmt(last.t, 1)}<small>°C</small> ${fmt(last.rh, 0)}<small>%</small></div>`
+            ? `<div class="kpi kpi-final"><div class="kpi-lbl"><i class="kpi-icon" style="background:${scnColor(activeScn())}"></i>${esc(t('kpi.final'))} · ${last.n}</div>`
+                + `<div class="kpi-val">${num(last.t, 1)}<small>°C</small> ${num(last.rh, 0)}<small>%</small></div>`
                 + `<div class="kpi-sub">x ${fmt(last.x * 1000, 2)} g/kg · h ${fmt(last.h, 1)} kJ/kg</div></div>`
             : `<div class="kpi zero"><div class="kpi-lbl">${esc(t('kpi.final'))}</div><div class="kpi-val">—</div><div class="kpi-sub">&nbsp;</div></div>`;
         $('#kpis').innerHTML = [
@@ -731,7 +740,7 @@
     }
     function chartOptions() {
         return {
-            type: prefs.chart, p: pressure(), theme: themeResolved(), range: prefs.range, layers: prefs.layers,
+            type: prefs.chart, p: pressure(), theme: skin(), range: prefs.range, layers: prefs.layers,
             comfort: prefs.comfort, fmt, labels: chartLabels()
         };
     }
@@ -764,7 +773,7 @@
     function renderChartChrome() {
         $$('#chart-type button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.type === prefs.chart)));
         $('#chart-title').textContent = t('chart.title', { type: t('chartType.' + prefs.chart), p: fmt(pressure() / 1000, 3) });
-        const C = window.MollierChart.THEMES[themeResolved()];
+        const C = window.MollierChart.THEMES[skin()];
         const m = prefs.chart === 'mollier';
         const chips = [
             ['rh', C.rh, ''], ['h', C.h, ''], ['iso', C.isoMajor, ''], ['wb', C.wb, 'dash'],
@@ -1061,8 +1070,20 @@
     }
 
     function applyTheme() {
-        if (prefs.theme === 'auto') document.documentElement.removeAttribute('data-theme');
-        else document.documentElement.setAttribute('data-theme', prefs.theme);
+        const root = document.documentElement, ikea = prefs.brand === 'ikea';
+        if (prefs.theme === 'auto') root.removeAttribute('data-theme');
+        else root.setAttribute('data-theme', prefs.theme);
+        if (ikea) root.setAttribute('data-brand', 'ikea'); else root.removeAttribute('data-brand');
+        $('#version').setAttribute('aria-pressed', String(ikea));
+        $('meta[name="theme-color"]').setAttribute('content', ikea ? '#0058a3' : '#059669');
+        // Lettertypen van de verborgen huisstijl pas laden als die aan staat
+        if (ikea && !$('#font-ikea')) {
+            const l = document.createElement('link');
+            l.id = 'font-ikea';
+            l.rel = 'stylesheet';
+            l.href = IKEA_FONT_URL;
+            document.head.appendChild(l);
+        }
     }
 
     // =====================================================================
@@ -1103,13 +1124,22 @@
             renderAll();
             configureChart();
         });
-        $('#btn-theme').addEventListener('click', () => {
-            prefs.theme = themeResolved() === 'dark' ? 'light' : 'dark';
+        const restyle = () => {
             savePrefs();
             applyTheme();
             renderScenarioPanel();
             configureChart();
             render();
+        };
+        $('#btn-theme').addEventListener('click', () => {
+            prefs.theme = themeResolved() === 'dark' ? 'light' : 'dark';
+            restyle();
+        });
+        // Easter egg: het versienummer in de voettekst wisselt naar de verborgen huisstijl
+        $('#version').addEventListener('click', () => {
+            prefs.brand = prefs.brand === 'ikea' ? 'default' : 'ikea';
+            restyle();
+            toast(t(prefs.brand === 'ikea' ? 'toast.eggOn' : 'toast.eggOff'));
         });
         if (window.matchMedia) {
             matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
