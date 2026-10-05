@@ -465,6 +465,155 @@ select.input { padding-right: 28px; appearance: none; background-image: url("dat
 
 .footer { text-align: center; font-size: 11.5px; color: var(--muted); padding: 4px 16px 24px; max-width: 1100px; margin: 0 auto; }
 
+/* ---------- Verborgen huisstijl: IKEA ([data-brand="ikea"]) ----------
+   Easter egg: klik op het versienummer in de voettekst. Naar het Skapa-designsysteem:
+   wit/grijs met #111 voor selecties, merkblauw #0058a3 voor acties en geel #ffdb00 als merkaccent,
+   Noto Sans, pilvormige knoppen (64px) en 4px hoeken. Donker = de blauwe winkelgevel met geel. */
+.logo-ikea { display: none; }
+.egg { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: default; }
+
+:root[data-brand="ikea"] {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface-2: #f5f5f5;
+    --surface-3: #ebebeb;
+    --border: #dfdfdf;
+    --border-strong: #929292;
+    --text: #111111;
+    --text-2: #484848;
+    --muted: #767676;
+    --accent: #0058a3;
+    --accent-2: #004f93;
+    --accent-soft: #e5eef6;
+    --accent-ring: rgba(0, 88, 163, .3);
+    --select: #111111;
+    --on-select: #ffffff;
+    --yellow: #ffdb00;
+    --topbar: #ffffff;
+    --topbar-line: #dfdfdf;
+    --badge-text: #ffffff;
+    --danger: #e00751;
+    --danger-soft: #fde6ed;
+    --heat: #f26a10;
+    --cool: #0058a3;
+    --shadow: none;
+    --shadow-pop: 0 4px 16px rgba(17, 17, 17, .16);
+    --radius: 4px;
+    --radius-sm: 4px;
+    --font: 'Noto IKEA', 'Noto Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-brand="ikea"]:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #002d57;
+        --surface: #003a70;
+        --surface-2: #00427e;
+        --surface-3: #004b8d;
+        --border: #19599a;
+        --border-strong: #4a7db4;
+        --text: #ffffff;
+        --text-2: #dbe7f3;
+        --muted: #a3bfdb;
+        --accent: #ffdb00;
+        --accent-2: #ffe34d;
+        --accent-soft: rgba(255, 219, 0, .14);
+        --accent-ring: rgba(255, 219, 0, .45);
+        --select: #ffdb00;
+        --on-select: #111111;
+        --topbar: #0058a3;
+        --topbar-line: #ffdb00;
+        --badge-text: #111111;
+        --danger: #ff8fa8;
+        --danger-soft: rgba(255, 143, 168, .14);
+        --heat: #ffa36b;
+        --cool: #9fd0ff;
+        --shadow-pop: 0 8px 24px rgba(0, 20, 45, .55);
+    }
+    :root[data-brand="ikea"]:not([data-theme="light"]) .btn.primary { color: #111; }
+}
+:root[data-brand="ikea"][data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #002d57;
+    --surface: #003a70;
+    --surface-2: #00427e;
+    --surface-3: #004b8d;
+    --border: #19599a;
+    --border-strong: #4a7db4;
+    --text: #ffffff;
+    --text-2: #dbe7f3;
+    --muted: #a3bfdb;
+    --accent: #ffdb00;
+    --accent-2: #ffe34d;
+    --accent-soft: rgba(255, 219, 0, .14);
+    --accent-ring: rgba(255, 219, 0, .45);
+    --select: #ffdb00;
+    --on-select: #111111;
+    --topbar: #0058a3;
+    --topbar-line: #ffdb00;
+    --badge-text: #111111;
+    --danger: #ff8fa8;
+    --danger-soft: rgba(255, 143, 168, .14);
+    --heat: #ffa36b;
+    --cool: #9fd0ff;
+    --shadow-pop: 0 8px 24px rgba(0, 20, 45, .55);
+}
+:root[data-brand="ikea"][data-theme="dark"] .btn.primary { color: #111; }
+:root[data-brand="ikea"] :focus-visible { outline-color: var(--select); }
+
+/* Topbalk: wit met logo, zoekbalk-pil als projectnaam (donker: blauwe gevel met gele streep) */
+:root[data-brand="ikea"] .topbar { background: var(--topbar); border-bottom: 2px solid var(--topbar-line); backdrop-filter: none; }
+:root[data-brand="ikea"] .logo { display: none; }
+:root[data-brand="ikea"] .logo-ikea { display: block; width: 114px; height: 38px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+:root[data-brand="ikea"] .brand-text h1 { font-weight: 800; letter-spacing: -.01em; }
+:root[data-brand="ikea"] .project-name { background: var(--surface-2); border-radius: 64px; padding: 8px 18px; color: var(--text); }
+:root[data-brand="ikea"] .project-name:hover { border-color: transparent; background: var(--surface-3); }
+:root[data-brand="ikea"] .project-name:focus { background: var(--surface); border-color: var(--select); box-shadow: none; }
+:root[data-brand="ikea"] .topbar :is(.tb-btn, .icon-btn) { background: transparent; }
+
+/* Pillen (64px) voor knoppen, filters en schakelaars; selectie in zwart (donker: geel) */
+:root[data-brand="ikea"] :is(.btn, .tb-btn, .icon-btn, .chip-btn, .seg, .seg button, .scn-tab, .layer-chip, .preset-row button, .step-actions button) { border-radius: 64px; }
+:root[data-brand="ikea"] .btn { height: 44px; padding: 0 22px; font-weight: 700; }
+:root[data-brand="ikea"] :is(.tb-btn, .icon-btn, .chip-btn) { border-color: var(--border); }
+:root[data-brand="ikea"] :is(.tb-btn, .icon-btn, .chip-btn):hover { border-color: var(--select); color: var(--text); background: var(--surface); }
+:root[data-brand="ikea"] .topbar :is(.tb-btn, .icon-btn):hover { background: transparent; }
+:root[data-brand="ikea"] .seg { background: var(--surface-2); padding: 4px; }
+:root[data-brand="ikea"] .seg button[aria-selected="true"] { background: var(--select); color: var(--on-select); box-shadow: none; }
+:root[data-brand="ikea"] .scn-tab { background: var(--surface-2); border-color: transparent; }
+:root[data-brand="ikea"] .scn-tab[aria-selected="true"] { background: var(--select); border-color: var(--select); color: var(--on-select); box-shadow: none; }
+:root[data-brand="ikea"] .layer-chip { background: var(--surface-2); border-color: transparent; }
+:root[data-brand="ikea"] .layer-chip[aria-pressed="true"] { background: var(--surface); border-color: var(--select); }
+:root[data-brand="ikea"] .preset-row button:hover { border-color: var(--select); color: var(--text); }
+:root[data-brand="ikea"] .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--select); }
+:root[data-brand="ikea"] .menu-pop button:hover { background: var(--surface-2); color: var(--text); }
+:root[data-brand="ikea"] .input:focus { border-color: var(--select); box-shadow: 0 0 0 1px var(--select); }
+:root[data-brand="ikea"] .panel-head h2 { text-transform: none; font-size: 16px; font-weight: 800; letter-spacing: -.01em; color: var(--text); }
+:root[data-brand="ikea"] :is(.pt-badge, .data-table .nr) { color: var(--badge-text); }
+:root[data-brand="ikea"] .toast { background: #111; border-radius: 4px; }
+:root[data-brand="ikea"] .statusbar .idle::before { content: 'Hej! '; font-weight: 800; color: var(--text); }
+
+/* Procescategorieën als producttegels met Zweedse productnaam */
+:root[data-brand="ikea"] .cat-btn { background: var(--surface); gap: 2px; font-weight: 400; font-size: 10.5px; color: var(--text-2); }
+:root[data-brand="ikea"] .cat-btn svg { display: none; }
+:root[data-brand="ikea"] .cat-btn::before { font-size: 11.5px; font-weight: 800; letter-spacing: .02em; color: var(--text); }
+:root[data-brand="ikea"] .cat-btn:hover { border-color: var(--select); }
+:root[data-brand="ikea"] .cat-btn[aria-selected="true"] { background: var(--surface); border-color: var(--select); box-shadow: inset 0 0 0 1px var(--select); color: var(--text-2); }
+:root[data-brand="ikea"] .cat-btn[data-cat="heat"]::before { content: 'VÄRMA'; }
+:root[data-brand="ikea"] .cat-btn[data-cat="cool"]::before { content: 'KYLA'; }
+:root[data-brand="ikea"] .cat-btn[data-cat="humidify"]::before { content: 'FUKTA'; }
+:root[data-brand="ikea"] .cat-btn[data-cat="dehumidify"]::before { content: 'AVFUKTA'; }
+:root[data-brand="ikea"] .cat-btn[data-cat="mix"]::before { content: 'BLANDA'; }
+:root[data-brand="ikea"] .cat-btn[data-cat="hr"]::before { content: 'ÅTERVINNA'; }
+:root[data-brand="ikea"] .cat-btn[data-cat="other"]::before { content: 'ÖVRIGT'; }
+
+/* Kerngetallen als prijskaartjes: vet getal, decimalen en eenheid verhoogd, eindpunt met geel label */
+:root[data-brand="ikea"] .kpi-lbl { color: var(--text); font-weight: 800; letter-spacing: .02em; }
+:root[data-brand="ikea"] .kpi-val { font-size: 30px; font-weight: 800; letter-spacing: -.04em; line-height: 1.15; }
+:root[data-brand="ikea"] :is(.kpi-dec, .kpi-val small) { position: relative; top: .25em; vertical-align: top; font-size: 13px; font-weight: 800; letter-spacing: 0; line-height: 1; }
+:root[data-brand="ikea"] .kpi-val small { color: var(--text); margin-left: 2px; }
+:root[data-brand="ikea"] .kpi.zero .kpi-val small { color: var(--muted); }
+:root[data-brand="ikea"] .kpi-final .kpi-lbl { display: inline-block; max-width: 100%; padding: 1px 6px; background: var(--yellow); color: #111; }
+:root[data-brand="ikea"] .kpi-final .kpi-icon { display: none; }
+
 /* ---------- Responsief ---------- */
 @media (max-width: 1400px) {
     .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -504,6 +653,9 @@ select.input { padding-right: 28px; appearance: none; background-image: url("dat
     .step-actions button { width: 34px; height: 30px; }
     .menu-pop.wide { width: min(300px, calc(100vw - 32px)); }
     .brand-text h1 { font-size: 15px; }
+    :root[data-brand="ikea"] .logo-ikea { width: 90px; height: 30px; }
+    :root[data-brand="ikea"] .kpi-val { font-size: 20px; }
+    :root[data-brand="ikea"] :is(.kpi-dec, .kpi-val small) { font-size: 10px; }
 }
 @media (max-width: 420px) {
     .seg button { padding: 5px 8px; font-size: 12px; }

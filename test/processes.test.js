@@ -46,6 +46,42 @@ test('koelbatterij: uittrede ligt op de lijn naar het ADP met bypassfactor', () 
     near(r2.steps[0].info.bf, 0.2, 1e-6, 'BF terug uit t');
 });
 
+test('koellast trekt de enthalpie van het condensaat af (ASHRAE)', () => {
+    for (const type of ['cool', 'coil', 'cooldehum']) {
+        const params = { cool: { mode: 'toT', value: 12 }, coil: { tAdp: 8, mode: 'bf', value: 0.15 }, cooldehum: { t: 14, rh: 90 } }[type];
+        const st = scn({ pair: 't-rh', a: 28, b: 55 }, [{ type, params }]).steps[0];
+        const m = st.start.mdot;
+        const q = m * ((st.start.h - st.end.h) - (st.start.x - st.end.x) * P.CP_W * st.end.t);
+        near(-st.qt, q, 1e-9, `${type} Q`);
+        near(st.qs + st.ql, st.qt, 1e-12, `${type} Q_s + Q_l`);
+    }
+});
+
+test('koelbatterij met zeer vochtige intrede: uittrede verzadigd, geen mist', () => {
+    const st = scn({ pair: 't-rh', a: 30, b: 90 }, [{ type: 'coil', params: { tAdp: 8, mode: 'bf', value: 0.2 } }]).steps[0];
+    assert.equal(st.end.fog, false);
+    near(st.end.rh, 100, 1e-6, 'RH');
+    // Zelfde koellast als het (fysisch onmogelijke) mistpunt op de rechte lijn naar het ADP
+    const adp = st.aux[0].state;
+    const fogPt = PR.lerpState(adp, st.start, 0.2, p);
+    assert.equal(fogPt.fog, true);
+    near(st.end.t, fogPt.t, 1e-9, 't');
+    const m = st.start.mdot;
+    near(-st.qt, m * ((st.start.h - fogPt.h) - (st.start.x - fogPt.x) * P.hCondensed(fogPt.t)), 1e-9, 'Q');
+});
+
+test('energiebalans over een keten: Σ Q = ṁ·Δh + condensaat', () => {
+    const r = scn({ pair: 't-rh', a: 30, b: 60 }, [
+        { type: 'coil', params: { tAdp: 9, mode: 'bf', value: 0.1 } },
+        { type: 'heat', params: { mode: 'toT', value: 18 } },
+        { type: 'fan', params: { dp: 700, eff: 60 } }
+    ]);
+    const m = r.mdot, s0 = r.states[0], sN = r.states[r.states.length - 1];
+    const drain = r.steps.reduce((a, s) => a + (s.dx < 0 ? -s.dx * m * P.hCondensed(s.end.t) : 0), 0);
+    near(r.steps.reduce((a, s) => a + s.qt, 0), m * (sN.h - s0.h) + drain, 1e-9, 'energie');
+    near(r.steps.reduce((a, s) => a + s.water, 0), m * (sN.x - s0.x) * 3600, 1e-9, 'water');
+});
+
 test('koelen & ontvochtigen: afgeleid ADP en BF zijn consistent', () => {
     const r = scn({ pair: 't-rh', a: 30, b: 50 }, [{ type: 'cooldehum', params: { t: 14, rh: 90 } }]);
     const st = r.steps[0];

@@ -12,6 +12,7 @@
     const P = root.Psychro;
     const PR = root.Processes;
     const FONT = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+    const FONT_IKEA = "'Noto IKEA', 'Noto Sans', " + FONT;
     const SVGNS = 'http://www.w3.org/2000/svg';
 
     // ---- Kleuren per thema (referentielijnen terughoudend, processen krachtig) ----
@@ -29,10 +30,27 @@
             h: '#34d399', hText: '#6ee7b7', wb: '#c084fc', wbText: '#d8b4fe', rho: '#fbbf24', rhoText: '#fcd34d',
             comfort: '#34d399', comfortText: '#a7f3d0', axisText: '#94a3b8', axisLine: '#475569', axisTitle: '#e2e8f0',
             frame: '#475569', text: '#f1f5f9', muted: '#94a3b8', hover: '#cbd5e1', legendBg: '#0f172a'
+        },
+        // Verborgen huisstijl (IKEA): rustig grijs, merkblauw voor RH, gele comfortzone;
+        // donker = blauwe winkelgevel met wit en geel
+        ikeaLight: {
+            page: '#ffffff', plot: '#ffffff', fog: '#f5f5f5', grid: '#f0f0f0', gridMajor: '#dfdfdf',
+            iso: '#e5e5e5', isoMajor: '#a6a6a6', rh: '#0058a3', sat: '#111111', rhText: '#0058a3',
+            h: '#b39500', hText: '#6e5c00', wb: '#767676', wbText: '#484848', rho: '#0a8a00', rhoText: '#076300',
+            comfort: '#ffdb00', comfortStroke: '#c9a800', comfortText: '#111111', comfortOpacity: .3, axisText: '#484848', axisLine: '#929292',
+            axisTitle: '#111111', frame: '#929292', text: '#111111', muted: '#767676', hover: '#484848', legendBg: '#ffffff', font: FONT_IKEA
+        },
+        ikeaDark: {
+            page: '#003a70', plot: '#002d57', fog: '#00386b', grid: '#0b3f74', gridMajor: '#1a5291',
+            iso: '#164c86', isoMajor: '#4f7fb3', rh: '#d6e6f5', sat: '#ffffff', rhText: '#e6f0fa',
+            h: '#ffdb00', hText: '#ffe34d', wb: '#9ec5ea', wbText: '#c6dcf2', rho: '#7fd47a', rhoText: '#a6e3a2',
+            comfort: '#ffdb00', comfortText: '#ffdb00', comfortOpacity: .16, axisText: '#c6dcf2', axisLine: '#4f7fb3',
+            axisTitle: '#ffffff', frame: '#4f7fb3', text: '#ffffff', muted: '#a3bfdb', hover: '#ffffff', legendBg: '#002d57', font: FONT_IKEA
         }
     };
 
     function chartCSS(c) {
+        const F = c.font || FONT;
         return `
 .plot-bg{fill:${c.plot}}
 .fog{fill:${c.fog}}
@@ -48,8 +66,8 @@
 .hline.major{stroke-width:1.1;stroke-opacity:.85}
 .wb{stroke:${c.wb};stroke-width:1;fill:none;stroke-dasharray:6 3;stroke-opacity:.8}
 .rho{stroke:${c.rho};stroke-width:1;fill:none;stroke-dasharray:2 3}
-.comfort{fill:${c.comfort};fill-opacity:.1;stroke:${c.comfort};stroke-width:1.4;stroke-dasharray:6 4}
-.lbl{font:500 10px ${FONT};paint-order:stroke;stroke:${c.plot};stroke-width:3px;stroke-linejoin:round}
+.comfort{fill:${c.comfort};fill-opacity:${c.comfortOpacity || .1};stroke:${c.comfortStroke || c.comfort};stroke-width:1.4;stroke-dasharray:6 4}
+.lbl{font:500 10px ${F};paint-order:stroke;stroke:${c.plot};stroke-width:3px;stroke-linejoin:round}
 .lbl-rh{fill:${c.rhText}}
 .lbl-h{fill:${c.hText}}
 .lbl-wb{fill:${c.wbText}}
@@ -58,9 +76,9 @@
 .lbl-fogtxt{fill:${c.muted};font-style:italic;font-size:11px}
 .lbl-edge{fill:${c.muted};font-size:9px}
 .edge-tick{stroke:${c.muted};stroke-width:1}
-.axis text,.tick-lbl{fill:${c.axisText};font:500 11px ${FONT}}
+.axis text,.tick-lbl{fill:${c.axisText};font:500 11px ${F}}
 .axis line,.axis path,.tick-line{stroke:${c.axisLine}}
-.axis-title{fill:${c.axisTitle};font:600 11.5px ${FONT}}
+.axis-title{fill:${c.axisTitle};font:600 11.5px ${F}}
 .axis-title.h{fill:${c.hText}}
 .frame{fill:none;stroke:${c.frame};stroke-width:1}
 .proc{fill:none;stroke-width:2.75;stroke-linecap:round;stroke-linejoin:round}
@@ -69,19 +87,19 @@
 .hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer;pointer-events:stroke}
 .aux{fill:none;stroke-width:1.3;stroke-dasharray:4 3}
 .auxpt{fill:${c.plot};stroke-width:2}
-.pt-lbl.aux-lbl{font:600 10px ${FONT};fill:${c.muted};paint-order:stroke;stroke:${c.plot};stroke-width:3px}
+.pt-lbl.aux-lbl{font:600 10px ${F};fill:${c.muted};paint-order:stroke;stroke:${c.plot};stroke-width:3px}
 .pt{stroke:${c.plot};stroke-width:2.5;cursor:pointer}
 .ptg.drag .pt{cursor:grab}
 .ptg.inactive{opacity:.45}
 .pt-ring{fill:none;stroke-width:2}
-.pt-lbl{font:700 11.5px ${FONT};fill:${c.text};paint-order:stroke;stroke:${c.plot};stroke-width:3.5px;stroke-linejoin:round;pointer-events:none}
-.pt-val{font:500 10px ${FONT};fill:${c.muted};paint-order:stroke;stroke:${c.plot};stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.pt-lbl{font:700 11.5px ${F};fill:${c.text};paint-order:stroke;stroke:${c.plot};stroke-width:3.5px;stroke-linejoin:round;pointer-events:none}
+.pt-val{font:500 10px ${F};fill:${c.muted};paint-order:stroke;stroke:${c.plot};stroke-width:3px;stroke-linejoin:round;pointer-events:none}
 .preview{fill:none;stroke-width:2.5;stroke-dasharray:7 5;stroke-linecap:round}
 .preview-pt{fill:${c.plot};stroke-width:2.5}
 .hover-line{stroke:${c.hover};stroke-width:1;stroke-dasharray:3 3;fill:none;stroke-opacity:.7;pointer-events:none}
 .hover-dot{fill:${c.hover};pointer-events:none}
 .legend-box{fill:${c.legendBg};fill-opacity:.92;stroke:${c.frame};stroke-width:1}
-.legend-txt{font:500 11px ${FONT};fill:${c.text}}
+.legend-txt{font:500 11px ${F};fill:${c.text}}
 `;
     }
 

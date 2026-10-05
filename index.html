@@ -12,10 +12,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/app.css">
     <script>
-        // Thema vóór de eerste render zetten (geen flits)
+        // Thema en huisstijl vóór de eerste render zetten (geen flits)
         try {
             var pr = JSON.parse(localStorage.getItem('mollier.prefs') || '{}');
             if (pr.theme === 'light' || pr.theme === 'dark') document.documentElement.setAttribute('data-theme', pr.theme);
+            if (pr.brand === 'ikea') document.documentElement.setAttribute('data-brand', 'ikea');
         } catch (e) { /* geen opslag beschikbaar */ }
     </script>
 </head>
@@ -55,6 +56,8 @@
 
     <header class="topbar">
         <div class="brand">
+            <!-- Logo van de verborgen huisstijl (easter egg) -->
+            <svg class="logo-ikea" viewBox="0 0 120 40" aria-hidden="true"><rect width="120" height="40" fill="#0058a3"/><ellipse cx="60" cy="20" rx="56.5" ry="16.5" fill="#ffdb00"/><text x="60" y="27.4" text-anchor="middle" textLength="94" lengthAdjust="spacingAndGlyphs" fill="#0058a3" font-family="Jost, Futura, 'Century Gothic', 'Trebuchet MS', sans-serif" font-weight="800" font-size="21">MÖLLIER</text></svg>
             <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"/><path class="logo-grid" d="M8 24V8M8 24h16"/><path class="logo-curve" d="M8 24c5-2 11-7 16-16"/><path class="logo-curve2" d="M8 24c7-1 12-4 16-9"/></svg>
             <div class="brand-text">
                 <h1 data-i18n="app.title">Mollier h,x-diagram</h1>
@@ -219,7 +222,7 @@
         </section>
     </main>
 
-    <footer class="footer"><span data-i18n="app.footer"></span> · <span id="version">v4.0</span></footer>
+    <footer class="footer"><span data-i18n="app.footer"></span> · <button type="button" class="egg" id="version" aria-pressed="false">v4.0</button></footer>
 
     <div class="toasts" id="toasts" aria-live="polite"></div>
 
