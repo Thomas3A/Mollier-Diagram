@@ -214,3 +214,13 @@ test('projecttoestand: standaard, normalisatie en oude projecten', () => {
     assert.equal(M.beaufort(13), 6);
     assert.equal(M.beaufort(40), 12);
 });
+
+test('drukbalans toevoer volgt SPEC §5.4: toevoerschacht t.o.v. buitenlucht (besluit 6-10-2026)', () => {
+    const PH = require('../js/ewf/physics.js');
+    const r = sim(null, M.presetWeather('ontwerp_winter'));
+    const p = r.inputs.weather.p;
+    const rhoE = PH.rhoMoist(r.outdoor.t, r.outdoor.x, p), rhoTs = PH.rhoMoist(r.supply.t, r.supply.x, p);
+    for (const q of r.pressure.supply) {
+        near(q.available, r.pressure.pBase - 9.81 * q.z * (rhoTs - rhoE) - r.inputs.building.dpSupDesign, 1e-9, `vl. ${q.floor}`);
+    }
+});

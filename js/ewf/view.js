@@ -866,7 +866,7 @@
             + groups.map((g) => {
                 const body = rows.filter((q) => q.group === g).map((q) => `<tr><td class="l">${esc(q.id)}</td><td class="l">${esc(q.qty)}${q.unit && q.unit !== '–' ? ` [${esc(q.unit)}]` : ''}</td>`
                     + `<td>${fmt(q.value, 2)}</td><td>${q.ref == null ? '—' : fmt(q.ref, 2)}</td><td>${esc(tol(q))}</td>`
-                    + `<td class="l"><span class="ewf-st ${q.ok ? 'ok' : 'bad'}">${q.ok ? '✓' : '▲'} ${esc(t(q.ok ? 'ewf.m.ok' : 'ewf.m.bad'))}</span>${q.note === 'thesisConvention' ? `<div class="hint">${esc(t('ewf.m.thesisNote'))}</div>` : ''}</td></tr>`).join('');
+                    + `<td class="l"><span class="ewf-st ${q.ok ? 'ok' : 'bad'}">${q.ok ? '✓' : '▲'} ${esc(t(q.ok ? 'ewf.m.ok' : 'ewf.m.bad'))}</span>${q.note === 'thesisConvention' ? `<div class="hint">${esc(t('ewf.m.thesisNote'))}</div>` : q.note === 'spec' ? `<div class="hint">${esc(t('ewf.m.specNote'))}</div>` : ''}</td></tr>`).join('');
                 return `<h4>${esc(t('ewf.m.val.' + g))}</h4><div class="table-wrap"><table class="data-table ewf-table"><thead><tr>${t('ewf.m.valCols').map((c, i) => th(c, '', i < 2 || i === 5 ? 'l' : '')).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
             }).join('');
     }

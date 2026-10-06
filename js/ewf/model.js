@@ -620,7 +620,9 @@
         const dr = thesisDraft();
         row('draft', 'zomer voet', 'Δp_th', dr.summerFoot, 7.5, 0.2, 'Pa');
         row('draft', 'winter voet', 'Δp_th', dr.winterFoot, -14.0, 0.2, 'Pa');
-        row('draft', 'winter top', 'P_top', dr.winterTopThesis, 16.3, 0.2, 'Pa', 'thesisConvention');
+        // Besluit opdrachtgever 6-10-2026: SPEC §5.4 (schacht t.o.v. buitenlucht) is maatgevend, +30,3 Pa
+        row('draft', 'winter top', 'P_top', dr.winterTopGeneric, 30.3, 0.2, 'Pa', 'spec');
+        row('draft', 'winter top (proefschrift)', 'P_top', dr.winterTopThesis, 16.3, 0.2, 'Pa', 'thesisConvention');
         for (const fl of [4, 6, 8, 10, 14]) {
             const r = chimRef(fl);
             row('chimney', `${fl} verd.`, 'η', r.eta, null, [0.60, 0.68], '–');

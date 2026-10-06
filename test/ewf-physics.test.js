@@ -100,9 +100,10 @@ test('thermische trek: vereenvoudiging proefschrift (§3.5.5.4/5) met generieke 
     const d = M.thesisDraft();
     near(d.summerFoot, 7.5, 0.2, 'zomer voet');
     near(d.winterFoot, -14.0, 0.2, 'winter voet');
-    near(d.winterTopThesis, 16.3, 0.2, 'winter top (conventie proefschrift: schacht t.o.v. cascadekolom)');
-    // Neutrale-zonebenadering (SPEC §5.4): schacht t.o.v. buitenlucht → U-buiseffect, hogere overdruk bovenin
+    // Maatgevend (besluit 6-10-2026): neutrale zone, SPEC §5.4 — schacht t.o.v. buitenlucht → U-buiseffect
     near(d.winterTopGeneric, 30.3, 0.2, 'winter top (SPEC §5.4)');
+    // Ter vergelijking: het proefschrift rekent de schacht t.o.v. de cascadekolom
+    near(d.winterTopThesis, 16.3, 0.2, 'winter top (conventie proefschrift)');
 });
 
 test('stackDraft integreert over het profiel, niet met de gemiddelde temperatuur', () => {
