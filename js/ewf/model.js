@@ -22,22 +22,8 @@
     // =====================================================================
     // Catalogi
     // =====================================================================
-    /** Sproeispectra: Fulljet uit de testopstelling (§3.4.10.1) en tabel 3.2.3/2 (d10/d20/d30/d32 in mm). */
-    const SPRAY = {
-        fulljet: { d30: 1.048e-3, d32: 1.317e-3, src: '§3.4.10.1' },
-        s1: { d10: 2.95e-3, d20: 3.55e-3, d30: 4.01e-3, d32: 5.14e-3 },
-        s2: { d10: 2.65e-3, d20: 3.19e-3, d30: 3.61e-3, d32: 4.62e-3 },
-        s3: { d10: 2.36e-3, d20: 2.84e-3, d30: 3.21e-3, d32: 4.11e-3 },
-        s4: { d10: 2.06e-3, d20: 2.48e-3, d30: 2.81e-3, d32: 3.60e-3 },
-        s5: { d10: 1.77e-3, d20: 2.13e-3, d30: 2.41e-3, d32: 3.08e-3 },
-        s6: { d10: 1.47e-3, d20: 1.77e-3, d30: 2.01e-3, d32: 2.57e-3 },
-        s7: { d10: 1.18e-3, d20: 1.42e-3, d30: 1.61e-3, d32: 2.05e-3 },
-        s8: { d10: 0.88e-3, d20: 1.06e-3, d30: 1.20e-3, d32: 1.54e-3 },
-        s9: { d10: 0.59e-3, d20: 0.71e-3, d30: 0.80e-3, d32: 1.03e-3 },
-        s10: { d10: 0.29e-3, d20: 0.35e-3, d30: 0.40e-3, d32: 0.51e-3 },
-        custom: null
-    };
-    for (let i = 1; i <= 10; i++) SPRAY['s' + i].src = 'tab. 3.2.3/2';
+    /** Sproeispectra (catalogus in physics.js, gedeeld met het procestype cascade). */
+    const SPRAY = PH.SPRAY;
 
     /** Glas zonneschoorsteen (tab. 4.1.4, §4.5.6.4). */
     const GLASS = {
@@ -694,8 +680,31 @@
         return i < 0 ? 12 : i;
     }
 
+    /** Literatuur (SPEC §11). Bibliografische gegevens zijn taalonafhankelijk. */
+    const REFERENCES = [
+        { primary: true, text: 'Bronsema, B. (2013). Earth, Wind & Fire – Natuurlijke Airconditioning. Proefschrift TU Delft (promotie 7 juni 2013; promotoren P.G. Luscuere, A.P.J.M. Verheijen). Eburon, Delft. ISBN 978-90-5972-762-5.', url: 'https://repository.tudelft.nl/islandora/object/uuid:d181a9f2-2123-4de1-8856-cd7da74e8268' },
+        { text: 'ASHRAE (2017). Handbook – Fundamentals, hoofdstuk 1 Psychrometrics.' },
+        { text: 'Ranz, W.E. & Marshall, W.R. (1952). Evaporation from drops. Chemical Engineering Progress 48(3): 141–146; 48(4): 173–180.' },
+        { text: 'Schiller, L. & Naumann, A. (1933). Über die grundlegenden Berechnungen bei der Schwerkraftaufbereitung. Z. VDI 77: 318–320.' },
+        { text: 'Gunn, R. & Kinzer, G.D. (1949). The terminal velocity of fall for water droplets in stagnant air. Journal of Meteorology 6: 243–248.' },
+        { text: 'Churchill, S.W. & Usagi, R. (1972). A general expression for the correlation of rates of transfer and other phenomena. AIChE Journal 18(6): 1121–1128.' },
+        { text: 'Colebrook, C.F. (1939). Turbulent flow in pipes… J. Inst. Civil Engineers 11: 133–156; Swamee, P.K. & Jain, A.K. (1976). J. Hydraulics Div. ASCE 102(5): 657–664.' },
+        { text: 'van Hooff, T., Blocken, B., Aanen, L. & Bronsema, B. (2011). A venturi-shaped roof for wind-induced natural ventilation of buildings: wind tunnel and CFD evaluation of different design configurations. Building and Environment 46(9): 1797–1807.' },
+        { text: 'Blocken, B., van Hooff, T., Aanen, L. & Bronsema, B. (2011). Computational analysis of the performance of a venturi-shaped roof for natural ventilation: venturi-effect versus wind-blocking effect. Computers & Fluids 48(1): 202–213.' },
+        { text: 'Wieringa, J. & Rijkoort, P.J. (1983). Windklimaat van Nederland. KNMI / Staatsuitgeverij.' },
+        { text: 'Erbs, D.G., Klein, S.A. & Duffie, J.A. (1982). Estimation of the diffuse radiation fraction for hourly, daily and monthly-average global radiation. Solar Energy 28(4): 293–302.' },
+        { text: 'Hay, J.E. & Davies, J.A. (1980). Calculation of the solar radiation incident on an inclined surface. Proc. First Canadian Solar Radiation Data Workshop, 59–72; Duffie, J.A. & Beckman, W.A. (2013). Solar Engineering of Thermal Processes, 4e druk, Wiley, §2.16.' },
+        { text: 'NOAA Global Monitoring Laboratory. General Solar Position Calculations.', url: 'https://gml.noaa.gov/grad/solcalc/solareqns.PDF' },
+        { text: 'NEN-EN 16798-1:2019 — Energieprestatie van gebouwen, ventilatie, binnenmilieu-parameters.' },
+        { text: 'Besluit bouwwerken leefomgeving (Bbl), art. 4.122 lid 2.', url: 'https://iplo.nl/regelgeving/regels-voor-activiteiten/technische-bouwactiviteit/nieuwbouw/rijksregels/ventilatie/' },
+        { text: 'ISSO-publicaties 51/53/57 (2017) — basis-ontwerpbuitentemperatuur −10 °C.' },
+        { text: 'KNMI — uurgegevens station 260 De Bilt.', url: 'https://www.daggegevens.knmi.nl/klimatologie/uurgegevens' },
+        { text: 'KNMI (2024). Vijf jaar na het nationale hitterecord van 40,7 ℃.', url: 'https://www.knmi.nl/over-het-knmi/nieuws/vijf-jaar-na-het-nationale-hitterecord-van-40-7' },
+        { text: 'Open-Meteo.com — Forecast API, KNMI-modellen (HARMONIE-AROME), CC BY 4.0.', url: 'https://open-meteo.com/en/docs/knmi-api' }
+    ];
+
     return {
-        SOURCES, defaultState, normalizeState, weatherOf, beaufort,
+        REFERENCES, SOURCES, defaultState, normalizeState, weatherOf, beaufort,
         LAT, LON, BBL_PER_PERSON, SFP_CONV, COP_CONV,
         SPRAY, GLASS, TERRAIN, VENT_CATS, FIELDS, FIELD, DEFAULTS, WEATHER_FIELDS, WFIELD,
         PRESETS, PRESET, SEASON_DATE, REF,

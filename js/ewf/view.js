@@ -534,6 +534,7 @@
             const why = e.target.closest('[data-why]');
             if (why) { setTab('method', 'ewf-m-' + why.dataset.why); return; }
             if (e.target.closest('#ewf-csv')) exportCSV();
+            if (e.target.closest('#ewf-open-mollier')) openInMollier();
         });
         content.addEventListener('keydown', (e) => {
             const tb = e.target.closest('#ewf-tabs .tab');
@@ -546,13 +547,15 @@
     }
 
     function setTab(tab, anchor) {
+        S.anchor = anchor || null;
         const pr = app.prefs();
         pr.ewf.tab = tab;
         app.savePrefs();
         renderTab();
         if (anchor) {
             const el = document.getElementById(anchor) || $('#ewf-pane');
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            el.scrollIntoView({ block: 'start' });
+            S.anchor = S.validation ? null : anchor;        // na het vullen van de validatie opnieuw in beeld brengen
         }
     }
 
@@ -734,6 +737,141 @@
     }
 
     // =====================================================================
+    // Mollier: tweede instantie van de bestaande grafiekklasse (SPEC §8.6.4, §9)
+    // =====================================================================
+    const MO_COLOR = { light: '#2a78d6', dark: '#3987e5', ikeaLight: '#0058a3', ikeaDark: '#ffdb00' };
+
+    function mollierTab(pane, r) {
+        const MC = root.MollierChart;
+        if (!MC) { pane.innerHTML = ''; return; }
+        if (!S.mini) {
+            S.miniWrap = document.createElement('div');
+            S.miniWrap.className = 'ewf-mini';
+            S.miniWrap.innerHTML = '<div class="chart-wrap ewf-mini-wrap"><svg></svg></div><div class="statusbar ewf-mini-status"></div>';
+        }
+        pane.innerHTML = `<div class="ewf-chart-head"><div class="ewf-chart-title">${esc(t('ewf.mo.title'))}</div>`
+            + `<button type="button" class="btn primary" id="ewf-open-mollier">${esc(t('ewf.mo.open'))}</button></div>`
+            + `<p class="hint">${esc(t('ewf.mo.legend'))}</p>`;
+        pane.appendChild(S.miniWrap);
+        const status = S.miniWrap.querySelector('.ewf-mini-status');
+        const showState = (s) => {
+            status.innerHTML = s
+                ? `<span class="sb-item"><span>t</span><b>${fmt(s.t, 1)}</b> °C</span><span class="sb-item"><span>x</span><b>${fmt(s.x * 1000, 2)}</b> g/kg</span>`
+                    + `<span class="sb-item"><span>φ</span><b>${fmt(s.rh, 0)}</b> %</span><span class="sb-item"><span>h</span><b>${fmt(s.h, 1)}</b> kJ/kg</span>`
+                : `<span class="idle">${esc(t('ewf.mo.hover'))}</span>`;
+        };
+        if (!S.mini) S.mini = new MC(S.miniWrap.querySelector('svg'), { onHover: (info) => showState(info && info.state) });
+        const sts = r.mollier.states, p = r.inputs.weather.p;
+        const ts = sts.map((q) => q.t), xs = sts.map((q) => q.x * 1000);
+        const range = { tMin: Math.floor(Math.min(...ts) / 5) * 5 - 5, tMax: Math.ceil(Math.max(...ts) / 5) * 5 + 5, xMax: Math.max(10, Math.ceil(Math.max(...xs) / 5) * 5 + 3) };
+        S.mini.configure({
+            type: 'mollier', p, theme: app.skin(), range, fmt,
+            layers: { iso: true, rh: true, h: true, wb: false, rho: false, fog: true, comfort: false, edge: false, pw: false, values: false },
+            labels: { axisX: t('chart.axisX'), axisT: t('chart.axisT'), axisPw: t('chart.axisPw'), axisH: t('chart.axisH'), axisTPsy: t('chart.axisTPsy'), axisXPsy: t('chart.axisXPsy'), comfort: t('chart.comfort'), fog: t('chart.fogLabel'), edge: t('chart.edge'), aux: t('chart.aux') }
+        });
+        S.mini.setData({
+            scenarios: [{ id: 'ewf', name: 'EWF', index: 0, color: MO_COLOR[app.skin()] || MO_COLOR.light, active: true, visible: true, states: sts, steps: r.mollier.steps, stepTypeOf: () => 'ewf' }],
+            selected: null, highlight: null, preview: null
+        });
+        showState(null);
+        const rows = sts.map((q) => `<tr><td><span class="nr" style="--c:${MO_COLOR[app.skin()] || MO_COLOR.light}">${q.n}</span></td><td class="l">${esc(t('ewf.mo.s' + q.n))}</td>`
+            + `<td>${fmt(q.t, 1)}</td><td>${fmt(q.x * 1000, 2)}</td><td>${fmt(q.rh, 0)}</td><td>${fmt(q.h, 1)}</td></tr>`).join('');
+        const tbl = document.createElement('div');
+        tbl.innerHTML = `<div class="table-wrap"><table class="data-table ewf-table"><thead><tr>${th(t('tbl.point'), '', 'l')}${th('', '', 'l')}${th('t', '°C')}${th('x', 'g/kg')}${th('φ', '%')}${th('h', 'kJ/kg')}</tr></thead><tbody>${rows}</tbody></table></div>`
+            + `<p class="hint">${esc(t('ewf.mo.note'))}</p>`;
+        pane.appendChild(tbl);
+    }
+
+    /** Naam van de weersituatie voor het scenario "EWF – …". */
+    function weatherName() {
+        const ws = ewf().weather;
+        if (ws.source === 'preset') return t(`ewf.preset.${ws.presetId}.name`);
+        if (ws.source === 'live') return t('ewf.mo.live');
+        return t('ewf.mo.manual');
+    }
+
+    /** Scenario aanmaken/bijwerken in het Mollier-diagram en daarheen schakelen (via change: ongedaan te maken). */
+    function openInMollier() {
+        const r = S.result;
+        if (!r || !r.outdoor) return;
+        const b = r.inputs.building, P = root.Psychro;
+        const rd = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
+        const name = `EWF – ${weatherName()}`.slice(0, 40);
+        const mDa = r.derived.mDa;
+        const steps = [];
+        if (r.cascade.active && r.cascade.out) {
+            if (b.spray !== 'custom') {
+                steps.push({ type: 'cascade', label: t('ewf.sch.kc'), params: { H: rd(r.derived.H, 3), w: b.wCascade, rwl: rd(r.cascade.rwl, 4), tW: r.cascade.tWIn, spray: b.spray, w0: b.w0 } });
+            } else {
+                steps.push({ type: 'point', label: t('ewf.sch.kc'), params: { pair: 't-x', a: rd(r.cascade.out.t, 2), b: rd(r.cascade.out.x * 1000, 3) } });
+            }
+        }
+        if (r.reheat.Q > 0) steps.push({ type: 'heat', label: t('ewf.mo.reheat'), params: { mode: 'toT', value: rd(r.supply.t, 2) } });
+        if (r.room) {
+            // Q_s zo gekozen dat het eindpunt precies de ruimtetoestand is (ruimtebelasting met vochtproductie)
+            const mw = r.loads.Gmoist;                                         // kg/s
+            const qs = mDa * (r.room.h - r.supply.h) - mw * (P.R0 + P.CP_V * r.supply.t);
+            steps.push({ type: 'load', label: t('ewf.sch.c2'), params: { qs: rd(qs, 3), mw: rd(mw * 3600, 3) } });
+        }
+        if (r.chimney.open) steps.push({ type: 'heat', label: t('ewf.sch.zs'), params: { mode: 'toT', value: rd(r.chimney.tOut, 2) } });
+        if (r.fiwihex.Q > 0) steps.push({ type: 'cool', label: t('ewf.mo.fiwi'), params: { mode: 'toT', value: rd(r.fiwihex.tAfter, 2) } });
+        app.upsertScenario(name, { pair: 't-rh', a: rd(r.outdoor.t, 2), b: rd(Math.max(0.1, r.outdoor.rh), 2) }, { mode: 'mass', value: rd(mDa * 3600, 1) }, steps);
+        app.setView('mollier');
+        app.toast(t('ewf.mo.opened', { name }));
+    }
+
+    // =====================================================================
+    // Methode & bronnen (SPEC §8.9), met live validatie
+    // =====================================================================
+    function methodTab(pane, r) {
+        const m = (k) => t('ewf.m.' + k);
+        const table = (cols, rows) => `<div class="table-wrap"><table class="data-table ewf-table ewf-mtable"><thead><tr>${cols.map((c, i) => th(c, '', i === 0 || i < cols.length ? 'l' : '')).join('')}</tr></thead>`
+            + `<tbody>${rows.map((rw) => `<tr>${rw.map((c) => `<td class="l">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+        const comp = (m('comp') || []).map((c) => `<section class="ewf-mcomp"><h4>${esc(c.h)}</h4><p>${esc(c.p)}</p><pre class="ewf-eq">${esc(c.eq.join('\n'))}</pre></section>`).join('');
+        const codes = Object.keys(t('ewf.m.warnText') || {});
+        const warn = `<dl class="ewf-mwarn">${codes.map((c) => `<dt id="ewf-m-${c}">${esc(t('ewf.warnTitle.' + c))}</dt><dd>${esc(t('ewf.m.warnText.' + c))}</dd>`).join('')}</dl>`;
+        const lit = `<ol class="ewf-lit">${M.REFERENCES.map((x) => `<li${x.primary ? ' class="primary"' : ''}>${esc(x.text)}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</a>` : ''}</li>`).join('')}</ol>`;
+        const c = r.cascade;
+        const check = `<ul class="ewf-check"><li class="${Math.abs(c.balanceErr) < 1e-3 ? 'ok' : 'bad'}">${esc(t('ewf.m.balance', { err: fmt(Math.abs(c.balanceErr) * 100, 3) }))}</li>`
+            + `<li class="ok">${esc(m('water'))}</li></ul>`;
+        pane.innerHTML = `<div class="ewf-method">
+            <p class="ewf-disclaimer">${esc(m('disclaimer'))}</p>
+            <p>${esc(m('intro'))}</p>
+            <h3>${esc(m('sec.check'))}</h3>${check}
+            <h3>${esc(m('sec.model'))}</h3><div class="ewf-mcomps">${comp}</div>
+            <h3>${esc(m('sec.assume'))}</h3>${table(m('assumeCols'), m('assume'))}
+            <h3>${esc(m('sec.dev'))}</h3>${table(m('devCols'), m('dev'))}
+            <h3>${esc(m('sec.warn'))}</h3>${warn}
+            <h3>${esc(m('sec.val'))}</h3><p class="hint">${esc(m('valIntro'))}</p><div id="ewf-validation"><p class="hint">${esc(m('computing'))}</p></div>
+            <h3>${esc(m('sec.lit'))}</h3>${lit}
+        </div>`;
+        // Validatie eenmalig per sessie, na het tekenen (blokkeert de eerste weergave niet)
+        const fill = () => {
+            const el = $('#ewf-validation');
+            if (el && S.validation) el.innerHTML = validationHTML(S.validation);
+            const target = S.anchor && document.getElementById(S.anchor);
+            if (target) target.scrollIntoView({ block: 'start' });
+            S.anchor = null;
+        };
+        if (S.validation) fill();
+        else setTimeout(() => { S.validation = M.runValidation(); fill(); }, 30);
+    }
+
+    function validationHTML(rows) {
+        const groups = [...new Set(rows.map((q) => q.group))];
+        const tol = (q) => (Array.isArray(q.tol) ? `${fmt(q.tol[0], 2)} … ${fmt(q.tol[1], 2)}` : typeof q.tol === 'object'
+            ? `± ${fmt(q.tol.rel * 100, 0)} %${q.tol.abs ? ` / ± ${fmt(q.tol.abs, 2)}` : ''}` : `± ${fmt(q.tol, q.tol < 1 ? 2 : 1)}`);
+        const nOk = rows.filter((q) => q.ok).length;
+        return `<p class="ewf-valsum ${nOk === rows.length ? 'ok' : 'bad'}">${nOk} / ${rows.length} ${esc(t('ewf.m.ok'))}</p>`
+            + groups.map((g) => {
+                const body = rows.filter((q) => q.group === g).map((q) => `<tr><td class="l">${esc(q.id)}</td><td class="l">${esc(q.qty)}${q.unit && q.unit !== '–' ? ` [${esc(q.unit)}]` : ''}</td>`
+                    + `<td>${fmt(q.value, 2)}</td><td>${q.ref == null ? '—' : fmt(q.ref, 2)}</td><td>${esc(tol(q))}</td>`
+                    + `<td class="l"><span class="ewf-st ${q.ok ? 'ok' : 'bad'}">${q.ok ? '✓' : '▲'} ${esc(t(q.ok ? 'ewf.m.ok' : 'ewf.m.bad'))}</span>${q.note === 'thesisConvention' ? `<div class="hint">${esc(t('ewf.m.thesisNote'))}</div>` : ''}</td></tr>`).join('');
+                return `<h4>${esc(t('ewf.m.val.' + g))}</h4><div class="table-wrap"><table class="data-table ewf-table"><thead><tr>${t('ewf.m.valCols').map((c, i) => th(c, '', i < 2 || i === 5 ? 'l' : '')).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
+            }).join('');
+    }
+
+    // =====================================================================
     // Export
     // =====================================================================
     function exportCSV() {
@@ -775,6 +913,6 @@
         get state() { return S; },
         get app() { return app; },
         compute, renderResults, updatePanels, th, signed, renderLive, fetchLive, allCSV,
-        tabs: { all: (pane) => allTab(pane) }
+        tabs: { all: (pane) => allTab(pane), mollier: (pane, r) => mollierTab(pane, r), method: (pane, r) => methodTab(pane, r) }
     };
 })(typeof self !== 'undefined' ? self : this);

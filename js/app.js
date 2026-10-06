@@ -342,6 +342,7 @@
             case 'hr': return t(`desc.hr.${prm.hrType}`, { eff: v('eff'), effX: v('effX') });
             case 'load': return t('desc.load', { qs: v('qs'), mw: v('mw') });
             case 'fan': return t('desc.fan', { dp: v('dp', 0), eff: v('eff') });
+            case 'cascade': return t('desc.cascade', { h: v('H', 1), rwl: v('rwl', 2), tw: v('tW', 1) });
             case 'point': {
                 const [qa, qb] = prm.pair.split('-');
                 return t('desc.point', { a: `${v('a')} ${PR.PAIR_UNITS[qa]}`, b: `${v('b')} ${PR.PAIR_UNITS[qb]}` });
@@ -359,6 +360,7 @@
         if (i.share != null) parts.push(t('info.share', { share: fmt(i.share, 1) }));
         if (r.kind === 'load') parts.push(t('info.gamma', { g: fmt(r.gamma, 0) }));
         if (i.power != null) parts.push(t('info.power', { p: fmt(i.power, 2) }));
+        if (r.kind === 'cascade' && i.tWOut != null) parts.push(t('info.cascade', { tw: fmt(i.tWOut, 1), dp: fmt(i.dpHydr, 1) }));
         return parts.join(' · ');
     }
 

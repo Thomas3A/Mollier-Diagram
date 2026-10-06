@@ -210,6 +210,41 @@
 .ewf-warn-ico { font-size: 11px; font-weight: 700; color: var(--warn); cursor: help; }
 .ewf-warn-ico.error { color: var(--danger); }
 
+/* ---------- Mollier-tab en Methode & bronnen ---------- */
+.ewf-mini { margin-top: 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.ewf-mini-wrap { height: 460px; position: relative; }
+.ewf-mini + div { margin-top: 12px; }
+.ewf-method { max-width: 1100px; font-size: 13px; line-height: 1.55; color: var(--text-2); }
+.ewf-method h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--text); margin: 22px 0 8px; }
+.ewf-method h4 { font-size: 13px; color: var(--text); margin: 14px 0 4px; }
+.ewf-method p { margin: 0 0 8px; }
+.ewf-disclaimer { padding: 8px 12px; border-left: 3px solid var(--warn); background: var(--warn-soft); color: var(--text); border-radius: 4px; }
+.ewf-mcomps { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 4px 24px; }
+.ewf-eq { margin: 4px 0 8px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); white-space: pre-wrap; overflow-x: auto; }
+.ewf-mtable td { white-space: normal; }
+.ewf-mwarn { margin: 0; display: grid; grid-template-columns: minmax(240px, 1fr) 2fr; gap: 6px 18px; }
+.ewf-mwarn dt { font-weight: 600; color: var(--text); scroll-margin-top: 80px; }
+.ewf-mwarn dt:target { color: var(--accent-2); }
+.ewf-mwarn dd { margin: 0; }
+.ewf-lit { padding-left: 20px; margin: 0; }
+.ewf-lit li { margin: 3px 0; }
+.ewf-lit li.primary { font-weight: 600; color: var(--text); }
+.ewf-lit a { color: var(--accent-2); word-break: break-all; }
+.ewf-check { list-style: none; padding: 0; margin: 0; }
+.ewf-check li::before { content: '✓ '; color: var(--ok); font-weight: 700; }
+.ewf-check li.bad::before { content: '▲ '; color: var(--warn); }
+.ewf-valsum { font-weight: 700; }
+.ewf-valsum.ok { color: var(--ok); }
+.ewf-valsum.bad { color: var(--warn); }
+.ewf-st { font-weight: 700; font-size: 12px; white-space: nowrap; }
+.ewf-st.ok { color: var(--ok); }
+.ewf-st.bad { color: var(--warn); }
+@media (max-width: 760px) {
+    .ewf-mcomps { grid-template-columns: 1fr; }
+    .ewf-mwarn { grid-template-columns: 1fr; }
+    .ewf-mini-wrap { height: 360px; }
+}
+
 /* Alleen bij afdrukken: tabel per verdieping */
 .ewf-print-floors { display: none; }
 

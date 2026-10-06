@@ -8,9 +8,9 @@
  * De droge-luchtmassastroom ṁ [kg/s] blijft constant, behalve bij mengen.
  */
 (function (root, factory) {
-    if (typeof module === 'object' && module.exports) module.exports = factory(require('./psychro.js'));
-    else root.Processes = factory(root.Psychro);
-})(typeof self !== 'undefined' ? self : this, function (P) {
+    if (typeof module === 'object' && module.exports) module.exports = factory(require('./psychro.js'), require('./ewf/physics.js'));
+    else root.Processes = factory(root.Psychro, root.EwfPhysics);
+})(typeof self !== 'undefined' ? self : this, function (P, PH) {
     'use strict';
 
     const { PsychroError } = P;
@@ -404,6 +404,35 @@
             }
         },
 
+        // Klimaatcascade (Earth, Wind & Fire, Bronsema 2013 h3): gelijkstroom druppel–lucht, celmodel.
+        // Doorsnede uit de luchtsnelheid bij ρ_ref = 1,20 kg/m³ (zoals het EWF-model); Q = ṁ·Δh (luchtzijde).
+        cascade: {
+            cat: 'ewf', kind: 'cascade',
+            fields: [
+                num('H', 'm', 28), num('w', 'm/s', 2), num('rwl', '–', 0.9), num('tW', '°C', 13),
+                opt('spray', PH ? Object.keys(PH.SPRAY).filter((k) => k !== 'custom') : ['fulljet'], 'fulljet'),
+                num('w0', 'm/s', 10)
+            ],
+            apply(s, prm, { p, mdot }) {
+                needFlow(mdot);
+                if (!PH) fail('ERR_INVALID');
+                if (!(prm.H > 0.5 && prm.H <= 200)) fail('ERR_CASCADE_H');
+                if (!(prm.w > 0.1 && prm.w <= 10) || !(prm.w0 > 0.5 && prm.w0 <= 40)) fail('ERR_POSITIVE');
+                if (!(prm.rwl > 0 && prm.rwl <= 5)) fail('ERR_CASCADE_RWL');
+                if (!(prm.tW > 0 && prm.tW < 60)) fail('ERR_WATER_T');
+                if (s.fog) fail('ERR_ALREADY_SAT');
+                const sp = PH.SPRAY[prm.spray] || PH.SPRAY.fulljet;
+                const Ac = mdot * (1 + s.x) / (PH.RHO_REF * prm.w);
+                const r = PH.cascade({ H: prm.H, Ac, mDa: mdot, tIn: s.t, xIn: s.x, mW: prm.rwl * mdot, tWIn: prm.tW, d30: sp.d30, d32: sp.d32, p, w0: prm.w0 });
+                const s2 = P.state(r.t, r.x, p);
+                return {
+                    state: s2,
+                    path: r.profile.map((q) => ({ t: q.t, x: q.x, h: P.enthalpy(q.t, q.x) })),
+                    info: { tWOut: r.tw, dpHydr: r.dpHydr, Q: r.Q / 1000, rwl: prm.rwl }
+                };
+            }
+        },
+
         point: {
             cat: 'other', kind: 'point',
             fields: [
@@ -468,6 +497,7 @@
         { id: 'dehumidify', types: ['dehum', 'desiccant'] },
         { id: 'mix', types: ['mix'] },
         { id: 'hr', types: ['hr'] },
+        { id: 'ewf', types: ['cascade'] },
         { id: 'other', types: ['load', 'fan', 'point'] }
     ];
 

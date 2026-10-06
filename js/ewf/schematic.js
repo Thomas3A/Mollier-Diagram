@@ -137,7 +137,7 @@
             const P = PAL[ctx.skin] || PAL.light;
             this.P = P;
             this.tc = tempScale(P.temp);
-            const { t, fmt } = ctx;
+            const { t } = ctx;
             this.card.querySelector('.ewf-schema-title').textContent = t('ewf.sch.title');
             this._badges(r, ctx);
             const g = this._geometry(r);
@@ -149,7 +149,6 @@
             this.card.querySelector('.ewf-note').textContent = t('ewf.sch.note');
             this._applyAnim();
             if (this.tipFor) this._hideTip();
-            void fmt;
         }
 
         // ---- Statusbadges ----
@@ -336,12 +335,11 @@
                 + tag('line', { x1: x7 - 9, y1: y7, x2: x7 + 9, y2: y7, stroke: P.slab, 'stroke-width': 2 }) + '</g>');
             // 4 FiWiHEx boven de schoorsteen en de shunt
             const fx0 = g.sh[0] - 8, fx1 = rx1 - 6;
-            const tTop = r.fiwihex.tTop, tAfter = r.fiwihex.tAfter;
+            const tAfter = r.fiwihex.tAfter;
             o.push(`<g data-comp="fiwi" data-panel="exhaust" tabindex="0" role="button" aria-label="${escT(t('ewf.sch.c4'))}">`
                 + tag('rect', { x: fx0, y: yr0 + 3, width: fx1 - fx0, height: yr1 - yr0 - 6, fill: tc(tAfter), stroke: P.line })
                 + tag('rect', { x: g.zs[0] - 2, y: yr0 + 8, width: g.zs[1] - g.zs[0] + 30, height: (yr1 - yr0) * 0.42, fill: `url(#${id}-wires)`, stroke: P.ink2, 'stroke-width': 1 })
                 + '</g>');
-            void tTop;
             // 5 hulpventilatoren: toevoer (boven in de cascade) en afvoer (bij de FiWiHEx)
             o.push(this._fan(r1((g.kc[0] + g.kc[1]) / 2), yr1 - 13, r.power.PfanSupply > 0.5, P, 'fanSup', t('ewf.sch.c5s')));
             o.push(this._fan(fx0 + 16, yr1 - 13, r.power.PfanExhaust > 0.5, P, 'fanExh', t('ewf.sch.c5e')));
@@ -454,7 +452,7 @@
             o.push(seg([[xe, yF - 4], [xe, yK + 6]], 2));
             o.push(seg([[xe, yK], [g.xR + 120, yK - 4]], Math.max(1, r.ventec.Uref)));
             // wind: profiel links (lengte ∝ U(z)) en in de keel
-            const PH = root.EwfPhysics, b = r.inputs.building, d = r.derived;
+            const PH = root.EwfPhysics, d = r.derived;
             const zs = [0.25, 0.5, 0.75, 1].map((f) => f * d.H);
             for (const z of zs) {
                 const U = PH.windAtHeight(r.inputs.weather.U10, z, { z0: d.z0, d: d.d });
@@ -466,7 +464,6 @@
             for (const y of [g.yRoofTop - 40, g.yRoofTop - 14]) {
                 if (r.ventec.Uref > 0.05) o.push(tag('line', { x1: g.xL - 150, y1: y, x2: r1(g.xL - 150 + lenR), y2: y, stroke: P.wind, 'stroke-width': 2, 'marker-end': `url(#${this.uid}-arw)` }));
             }
-            void b;
             return `<g class="flows" pointer-events="none">${o.join('')}</g>`;
         }
 
@@ -498,7 +495,6 @@
             o.push(tag('line', { x1: cxW, y1: y1 - 30, x2: g.zs[0] - 20, y2: y1 - 30, stroke: P.warm, 'stroke-width': 2, 'stroke-dasharray': '4 3' }));
             o.push('</g>');
             this.wko = { cxC, cxW };
-            void fmt;
             return o.join('');
         }
 

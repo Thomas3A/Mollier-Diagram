@@ -162,6 +162,17 @@ Waarden zonder bron in het proefschrift; in de app gemarkeerd met de badge *aann
 | Zonnestand presets zonder tijdstip | ware middag (uurhoek 0) op 21-07 / 21-03 / 21-12 van 2026 |
 | FiWiHEx-uittrede | `t_na = t_top − ε·(t_top − t_w,in)` (consistent met Q_hr) |
 | Harde invoergrenzen | buiten het zinvolle bereik: oranje melding; buiten fysisch zinvolle grenzen wordt de waarde begrensd met melding, zodat nooit NaN ontstaat |
+| Zonnefaçade | zelfde model; bij omschakelen B = gevelbreedte van een vierkante vloer (√AVO_verd), D = 0,65 m |
+| Weerinvoer bewerken | schakelt de bron naar *Handmatig* (waarden van de preset/live-meting worden overgenomen) |
+| Live-weer bewaren | alleen de gemapte waarden + tijdstempel in `project.ewf`, nooit de API-respons |
+| Locatie live-weer | keuzelijst van zes KNMI-stations, De Bilt standaard |
+| Deellink vanuit EWF | `?view=ewf` vóór de hash; het `#p=`-formaat zelf is ongewijzigd |
+| "Open in Mollier-diagram" | debiet als droge-luchtmassastroom (kg/h) zodat ṁ identiek is aan het EWF-model (q_v geldt bij 1,20 kg/m³); stappen: klimaatcascade (nieuw procestype; bij een eigen spectrum een vrij punt), naverwarmen, ruimtebelasting (Q_s zo dat het eindpunt de ruimtetoestand is), zonneschoorsteen (verwarmen), FiWiHEx (koelen) |
+| Procestype klimaatcascade | categorie *EWF-cascade*; doorsnede uit de luchtsnelheid bij 1,20 kg/m³; Q = ṁ·Δh luchtzijde (condensaat blijft in het water, dus geen condensaatterm) |
+| Temperatuurkleuren schema | divergerend blauw – neutraal grijs – rood, −10…50 °C, midden 20 °C; licht en donker apart gekozen |
+| Animatie | SMIL in het SVG (pauzeren zonder herrendering, ook in de SVG-export); standaard uit bij *prefers-reduced-motion* |
+| "Alle weersituaties" | berekend in stukjes van < 25 ms (geen blokkade van de hoofdthread), opnieuw bij gebouwwijziging |
+| Validatietabel in de app | eenmalig per sessie berekend bij het openen van *Methode & bronnen* |
 
 ## 6. Validatie
 
@@ -299,6 +310,9 @@ Wat dit laat zien:
 NEN 5060 (referentieklimaatjaren) wordt alleen genoemd: de data zijn auteursrechtelijk beschermd en worden niet meegeleverd.
 
 ## 9. Open punten
+
+- **Live-weer op GitHub Pages.** Mapping, foutafhandeling, time-out en cache zijn getest met de voorbeeldrespons;
+  de echte API was vanuit de bouwomgeving niet bereikbaar. Na publicatie één keer live controleren.
 
 - **Thermische trek bovenin (afwijking #11).** Het model volgt SPEC §5.4; het proefschrift lijkt de toevoerschacht
   t.o.v. de cascadekolom te rekenen. Graag bevestigen welke referentie bedoeld is; het verschil is bij −10 °C

@@ -603,6 +603,7 @@ select.input { padding-right: 28px; appearance: none; background-image: url("dat
 :root[data-brand="ikea"] .cat-btn[data-cat="dehumidify"]::before { content: 'AVFUKTA'; }
 :root[data-brand="ikea"] .cat-btn[data-cat="mix"]::before { content: 'BLANDA'; }
 :root[data-brand="ikea"] .cat-btn[data-cat="hr"]::before { content: 'ÅTERVINNA'; }
+:root[data-brand="ikea"] .cat-btn[data-cat="ewf"]::before { content: 'KASKAD'; }
 :root[data-brand="ikea"] .cat-btn[data-cat="other"]::before { content: 'ÖVRIGT'; }
 
 /* Kerngetallen als prijskaartjes: vet getal, decimalen en eenheid verhoogd, eindpunt met geel label */

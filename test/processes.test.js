@@ -177,3 +177,25 @@ test('elke processtap rekent met standaardwaarden vanuit een passend beginpunt',
         assert.ok(ok, type);
     }
 });
+
+test('procestype cascade: zelfde uitkomst als de EWF-kern en energiebalans', () => {
+    const PH = require('../js/ewf/physics.js');
+    const M = require('../js/ewf/model.js');
+    // Standaardgebouw, ontwerp zomer: zelfde ṁ, RW/L en doorsnede als EwfModel.simulate
+    const ref = M.simulate(M.DEFAULTS, M.presetWeather('ontwerp_zomer'));
+    const r = scn({ pair: 't-rh', a: 28, b: 55 }, [{ type: 'cascade', params: { H: 28, w: 2, rwl: ref.cascade.rwl, tW: 13, spray: 'fulljet', w0: 10 } }],
+        { mode: 'mass', value: ref.derived.mDa * 3600 });
+    const st = r.steps[0];
+    assert.ok(st.ok, st.error && st.error.code);
+    near(st.end.t, ref.cascade.out.t, 1e-6, 't uit');
+    near(st.end.x, ref.cascade.out.x, 1e-9, 'x uit');
+    near(st.info.dpHydr, ref.cascade.dpHydr, 1e-6, 'Δp_hydr');
+    near(st.qt, ref.cascade.Q / 1000, 1e-6, 'Q = ṁ·Δh');
+    assert.equal(st.path.length, ref.cascade.profile.length, 'profiel als pad');
+    assert.equal(st.step.type, 'cascade');
+    assert.ok(PH.SPRAY.fulljet.d30 > 0);
+    // Zonder debiet: foutmelding
+    const r0 = PR.computeScenario({ start: { pair: 't-rh', a: 28, b: 55 }, flow: { mode: 'volume', value: 0 },
+        steps: [{ id: 'c', type: 'cascade', enabled: true, params: PR.defaultParams('cascade') }] }, p);
+    assert.equal(r0.steps[0].error.code, 'ERR_NEED_FLOW');
+});

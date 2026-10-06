@@ -44,9 +44,10 @@
         qs: { t: 't', rh: 'RH', x: 'x', h: 'h', twb: 't_nat', tdp: 't_dauw' },
         cat: {
             heat: 'Verwarmen', cool: 'Koelen', humidify: 'Bevochtigen', dehumidify: 'Ontvochtigen',
-            mix: 'Mengen', hr: 'WTW', other: 'Overig'
+            mix: 'Mengen', hr: 'WTW', ewf: 'EWF-cascade', other: 'Overig'
         },
         type: {
+            cascade: 'Klimaatcascade (Earth, Wind & Fire)',
             heat: 'Verwarmer (x constant)',
             cool: 'Koeler — ideaal (dauwpuntknik)',
             coil: 'Koelbatterij — ADP en bypassfactor',
@@ -63,6 +64,7 @@
             point: 'Vrij punt'
         },
         typeHint: {
+            cascade: 'Water van ≈ 13 °C wordt bovenin een schacht versproeid; de vallende druppels koelen/drogen (zomer) of verwarmen/bevochtigen (winter) de lucht en leveren hydraulische trek. Celmodel volgens Bronsema (2013) h3; het pad volgt het berekende profiel.',
             heat: 'Voelbare verwarming: x blijft gelijk, lijn loodrecht omhoog in het Mollier-diagram.',
             cool: 'Ideale koeling: bij constante x tot het dauwpunt, daarna langs de verzadigingslijn (condensatie).',
             coil: 'Uittrede ligt op de rechte lijn naar het apparaatdauwpunt (ADP). BF = aandeel lucht dat de batterij „mist”. Valt die lijn in het mistgebied, dan slaan de druppels neer als condensaat en treedt de lucht verzadigd uit.',
@@ -100,8 +102,9 @@
             rhRet: 'Retourlucht RH', qs: 'Voelbare warmte Q_s', mw: 'Vochtproductie', dp: 'Drukverhoging Δp',
             pair: 'Invoer met', a: 'Waarde 1', b: 'Waarde 2', label: 'Eigen naam (optioneel)'
         },
-        fieldBy: { 'fan.eff': 'Totaalrendement ventilator', 'mix.flow2.fraction': 'Aandeel stroom 2 in mengsel', 'mix.flow2.volume': 'Volumestroom stroom 2', 'mix.flow2.mass': 'Massastroom stroom 2 (droge lucht)' },
+        fieldBy: { 'cascade.H': 'Actieve hoogte cascade', 'cascade.w': 'Luchtsnelheid', 'cascade.rwl': 'Water/lucht RW/L', 'cascade.tW': 'Watertemperatuur sproeiers', 'cascade.spray': 'Sproeispectrum', 'cascade.w0': 'Beginsnelheid druppels', 'fan.eff': 'Totaalrendement ventilator', 'mix.flow2.fraction': 'Aandeel stroom 2 in mengsel', 'mix.flow2.volume': 'Volumestroom stroom 2', 'mix.flow2.mass': 'Massastroom stroom 2 (droge lucht)' },
         opt: {
+            fulljet: 'Fulljet 3/4GG-3050 (testopstelling)', s1: 'Spectrum 1 (d30 4,01 mm)', s2: 'Spectrum 2 (d30 3,61 mm)', s3: 'Spectrum 3 (d30 3,21 mm)', s4: 'Spectrum 4 (d30 2,81 mm)', s5: 'Spectrum 5 (d30 2,41 mm)', s6: 'Spectrum 6 (d30 2,01 mm)', s7: 'Spectrum 7 (d30 1,61 mm)', s8: 'Spectrum 8 (d30 1,20 mm)', s9: 'Spectrum 9 (d30 0,80 mm)', s10: 'Spectrum 10 (d30 0,40 mm)',
             rh: 'Relatieve vochtigheid', x: 'Vochtgehalte', fraction: 'Aandeel in mengsel (%)', volume: 'Volumestroom (m³/h)',
             mass: 'Massastroom (kg/h)', sensible: 'Platenwisselaar / twin-coil (sensibel)', enthalpy: 'Enthalpiewiel (warmte + vocht)'
         },
@@ -115,6 +118,7 @@
             disabled: 'uitgeschakeld', blocked: 'geblokkeerd door ongeldig beginpunt', of: '{n} stappen'
         },
         desc: {
+            cascade: 'Klimaatcascade H {h} m · RW/L {rwl} · water {tw} °C',
             'heat.toT': 'Verwarmen naar {v} °C', 'heat.dT': 'Verwarmen +{v} K', 'heat.power': 'Verwarmen {v} kW',
             'heat.toH': 'Verwarmen naar {v} kJ/kg', 'heat.toRH': 'Verwarmen naar {v} % RH',
             'cool.toT': 'Koelen naar {v} °C', 'cool.dT': 'Koelen −{v} K', 'cool.power': 'Koelen {v} kW', 'cool.toRH': 'Koelen naar {v} % RH',
@@ -132,7 +136,7 @@
         },
         info: {
             bf: 'BF {bf} · ADP {adp} °C', dry: 'droge batterij (geen condensatie)', eff: 'η {eff} %', share: 'aandeel {share} %',
-            gamma: 'Δh/Δx {g} kJ/kg', power: 'energie {p} kW'
+            gamma: 'Δh/Δx {g} kJ/kg', power: 'energie {p} kW', cascade: 't_w,uit {tw} °C · Δp_hydr {dp} Pa'
         },
         kpi: {
             heating: 'Verwarmen', cooling: 'Koelen', recovered: 'WTW', humid: 'Bevochtigen',
@@ -176,6 +180,7 @@
             name: 'Voorbeeld luchtbehandelingskast', winter: 'Winter', summer: 'Zomer', newName: 'Nieuw project'
         },
         err: {
+            ERR_CASCADE_H: 'Hoogte cascade moet tussen 0,5 en 200 m liggen.', ERR_CASCADE_RWL: 'RW/L moet tussen 0 en 5 liggen.',
             ERR_INVALID: 'Ongeldige of ontbrekende invoer.',
             ERR_OUT_OF_RANGE: 'Buiten het geldigheidsgebied (−100…200 °C).',
             ERR_T_RANGE: 'Temperatuur buiten −100…200 °C.',
@@ -427,6 +432,98 @@
                     COP: 'COP', warn: '⚠'
                 }
             },
+            mo: {
+                title: 'Procesketen in het h,x-diagram', open: 'Open in Mollier-diagram', opened: 'Scenario "{name}" bijgewerkt in het Mollier-diagram',
+                legend: '1 buitenlucht · 2 uit cascade · 3 toevoer (na naverwarming) · 4 ruimte/afzuig · 5 top zonneschoorsteen · 6 na FiWiHEx',
+                note: 'Het traject 1→2 volgt het berekende cascadeprofiel (gekromd); het proefschrift tekent dit gemakshalve recht (§3.1.7.6).',
+                reheat: 'Naverwarming', fiwi: 'FiWiHEx', live: 'Weer van nu', manual: 'Handmatig weer', hover: 'Beweeg over het diagram om af te lezen.',
+                s1: 'Buitenlucht', s2: 'Uit de klimaatcascade', s3: 'Toevoer (na naverwarming)', s4: 'Ruimte / afzuiglucht', s5: 'Top zonneschoorsteen', s6: 'Na FiWiHEx'
+            },
+            m: {
+                intro: 'Quasi-stationaire momentopname van het complete EWF-systeem voor één weersituatie bij constant geregeld ventilatiedebiet (§2.5.5, §3.5.5.8, §4.5.5). Per verdieping wordt bepaald of de natuurlijke drijvende krachten volstaan: een overschot wordt met kleppen weggesmoord, een tekort door een hulpventilator aangevuld. Het gebouw is een neutrale zone (§3.5.5.2), dus toevoer en afvoer worden elk afzonderlijk in drukbalans gebracht.',
+                disclaimer: 'Quasi-stationair ontwerpmodel ter verkenning; geen vervanging voor CFD, windtunnelonderzoek of dynamische gebouwsimulatie. Validatie op basis van schaalproeven (Bronsema 2013).',
+                sec: { model: 'Model per onderdeel', assume: 'Aannames', dev: 'Bewuste afwijkingen van het proefschrift', val: 'Validatie (live berekend)', warn: 'Meldingen: waarom?', lit: 'Bronnen', check: 'Controle huidige berekening' },
+                comp: [
+                    { h: 'Wind en Ventecdak (h2)', p: 'De KNMI-windsnelheid op 10 m (potentiële wind) wordt via de mesowind op 60 m met een logaritmisch profiel naar dakhoogte vertaald. De inlaat aan de loefzijde geeft overdruk, de venturi-ejector in de keel onderdruk. Zonder geleideschoepen is het Ventecdak windrichtingonafhankelijk (§2.2.4).',
+                        eq: ['U_meso = U10 · ln(60/0,03) / ln(10/0,03)   (2.1.1)', 'U(z) = U_meso · ln((z − d)/z0) / ln(60/z0)   (2.5.1–2.5.3)', 'p_over = Cp_in · ½·ρ_e·U_ref², Cp_in = 0,8   (2.1.4)', 'Cp_ej = 0,2913·ln(U_ej/U_ref) + 0,0151 (c = 2 m, 2.3.2) · 0,5374·ln(·) + 0,6381 (c = 1 m, 2.3.1)'] },
+                    { h: 'Klimaatcascade (h3)', p: 'Celmodel (400 cellen) van boven naar beneden: druppelsnelheid uit een impulsvergelijking met C_d(Re), warmte- en stofoverdracht volgens Ranz-Marshall op het Sauter-oppervlak, verdamping/condensatie boven vloeibaar water, mist isenthalpisch naar verzadiging. Het gewicht van het zwevende water levert de hydraulische trek. In koelbedrijf zoekt de regeling de RW/L waarbij de lucht 17 °C uittreedt; in verwarmbedrijf is RW/L 0,9 (vorstbeveiliging).',
+                        eq: ['a = g·(1 − ρ_a/ρ_w) − ¾·(ρ_a/ρ_w)·C_d·w_r·|w_r|/d30   (3.2.4/4)', 'A = 6·V_water/d32   (Sauter; afwijking van 3.2.5/7)', 'h_c = (2 + 0,6·Pr^⅓·Re^½)·λ/d32   (3.2.6/1); β idem met Sc   (3.2.7/1)', 'ṁ_ev = β·A·(ρ_v,s(t_w) − ρ_v,lucht)   (3.2.2/3)', 'Δp_hydr = Σ (ṁ_w/A_c)·g·Δt   (3.2.15/3–6)'] },
+                    { h: 'Drukbalans toevoer (§3.5.5)', p: 'De beschikbare druk per verdieping volgt uit de overdruk van het Ventecdak, de hydraulische en thermische trek van de cascade, de kolom van de toevoerschacht en het ontwerpdrukverlies van het verdeelsysteem. De thermische trek wordt altijd over het berekende profiel geïntegreerd (§3.3.10).',
+                        eq: ['Δp_th,kc = Σ g·Δz·(ρ_profiel − ρ_e)', 'P_k = p_over + Δp_hydr + Δp_th,kc − g·z_k·(ρ_toe − ρ_e) − Δp_toe,ontwerp,  z_k = (k − ½)·h_verd'] },
+                    { h: 'Ruimte', p: 'Toevoer na eventuele naverwarming (17 °C koelen, 18 °C verwarmen). De ruimte neemt vocht op (65 g/h per persoon); de ventilatielucht levert basiskoeling of -verwarming, de rest is voor de klimaatplafonds. Comfortgrens RV ≤ 60 % en x ≤ 12 g/kg (§3.1.5.5).',
+                        eq: ['x_ruimte = x_toe + G_vocht/ṁ_da', 'Q_vent = ṁ_da·(c_p,da + c_p,v·x_toe)·(t_ruimte − t_toe);  Q_rest = Q_int − Q_vent'] },
+                    { h: 'Zonneschoorsteen en FiWiHEx (h4)', p: 'Per segment (4 per verdieping) een energiebalans van glas, lucht en absorberwand met straling, convectie (Churchill-Usagi: vrije en gedwongen convectie) en verlies naar buiten en naar binnen. Is de opbrengst negatief, dan sluit de schoorsteen (kantelpunt §4.5.6.8) en wordt via de shunt naar het dak afgezogen. De FiWiHEx is eenvoudig gemodelleerd (aanname).',
+                        eq: ['S = R·g·(Φ_beam·k(θ) + Φ_diff·0,874),  k(θ) = g(θ)/g(0)   (fig. 4.2.2)', 'h_c = [(1,5·|Δθ|^⅓)³ + (7,65·w)³]^⅓   (4.2.4/4, 4.2.4/9)', 'η = Q_zs/(R·B·H·Φ)   (4.5.6/1);  Δp_th,zs = Σ g·Δz·(ρ_e − ρ_zs)   (4.2.6/1)', 'Q_hr = ε·ṁ_da·c_p·max(0, t_top − t_w,in)'] },
+                    { h: 'Drukbalans afvoer (§4.2.7, §4.5.5)', p: 'Van het rooster op verdieping k omlaag door de shunt, omhoog door de zonneschoorsteen en via FiWiHEx en ejector naar buiten. In de winter kost de shuntkolom trek, zodat de bovenste verdiepingen het minste overhouden.',
+                        eq: ['A_k = Δp_th,zs + g·z_k·(ρ_ruimte − ρ_e) − p_ej − Σ verliezen   (open)', 'A_k = g·(H − z_k)·(ρ_e − ρ_ruimte) − p_ej − Σ verliezen   (dicht)', 'λ = 0,25 / [log10(ε/(3,72·D_h) + 5,74/Re^0,901)]²   (4.2.7/3)'] },
+                    { h: 'Energie (§3.5.4, §4.5.11)', p: 'Hulpventilatoren gedimensioneerd op de slechtste verdieping; sproeipomp uit opvoerhoogte en waterdebiet; bronpomp uit het warmtetransport. COP alleen in koelbedrijf. Referentie: conventionele LBK volgens de case study (§7.5.2).',
+                        eq: ['P_vent = q_v·(Δp_toe + Δp_af)/(0,85·0,90)   (4.5.11/1)', 'P_sproei = ρ_w·g·h_pomp·q_w/0,75   (3.5.4/1–3)', 'COP = |Q_koel| / (P_sproei + P_bron)   (3.5.4/4)'] },
+                    { h: 'Zon en weer', p: 'Zonnestand volgens NOAA. Uit de globale straling schat Erbs de directe en diffuse straling; Hay-Davies transponeert die naar de gevel. "Weer van nu" komt uit het KNMI-model HARMONIE-AROME via Open-Meteo (modelwaarde, geen meting); de gevelstraling volgt dan uit DNI en GTI.',
+                        eq: ['beam = DNI·cos θ + circumsolair;  diffuus = isotroop + grond (ρ_g = 0,2)', 'live: beam = DNI·cos θ,  diffuus = GTI − beam'] }
+                ],
+                assumeCols: ['Aanname', 'Waarde', 'Toelichting'],
+                assume: [
+                    ['Dakopbouw boven de bovenste vloer', '4 m', 'techniekverdieping 3,7 m (fig. 2.2.2)'],
+                    ['Verplaatsingshoogte d, terreinklasse 7 / 8', '10 / 15 m', 'proefschrift geeft alleen klasse 6'],
+                    ['Vorm shuntkanaal', 'vierkant, 1,0 m/s', 'D_h = zijde'],
+                    ['FiWiHEx', 'ε 0,7 · t_w 20 °C · Δp 10 Pa', 'eenvoudig model (§4.5.8.2)'],
+                    ['Leidinglengte sproeipomp', 'H + 10 m', '§3.5.4.2 geeft R en Δp_lokaal'],
+                    ['Variant A1 (tussenseizoen)', '10 °C ≤ θ_e ≤ 17 °C', 'definitie tussenseizoen'],
+                    ['Buitenluchtdichtheid', 'constant over de hoogte', 'luchtdrukgradiënt verwaarloosd'],
+                    ['Wandwarmte cascade', 'verwaarloosd', 'aandeel 3–5 % (§3.5.2.3)'],
+                    ['Weerpresets met *', 'wind en gevelstraling', 'zie toelichting per weersituatie']
+                ],
+                devCols: ['#', 'Proefschrift', 'Probleem', 'Keuze'],
+                dev: [
+                    ['1', 'Druppeloppervlak 3.2.5/7 ∝ d32²/d30³', 'Correct is 6V/d32; ≈ 2× te groot', 'A = 6V/d32; grove spectra (s1–s7) koelen minder dan tab. 3.5.2/1'],
+                    ['2', 'Eindsnelheid 3.2.4/6', 'Strijdig met Gunn & Kinzer', 'Krachtenevenwicht met C_d(Re)'],
+                    ['3', 'CWC 7,65·w én 6,5·w', 'Twee waarden', '7,65·w, gemengd met vrije convectie'],
+                    ['4', 'Knoopvergelijkingen 4.2.5/13–15', 'Drukfouten, verlies binnenwand ontbreekt', 'Correcte energiebalansen'],
+                    ['5', 'Aerodynamische trek 3.2.15/2', 'Niet aantoonbaar in metingen', 'Alleen informatief'],
+                    ['6', 'Thermische trek met gemiddelde temperatuur', 'Profiel niet-lineair', 'Integratie over het profiel'],
+                    ['7', 'Tabel 3.3.9/2', 'Volume- vs massastroom water', 'RW/L × ṁ_da'],
+                    ['8', 'Case study: 200 kW koeling', 'Past niet bij Δh', 'Niet als validatie'],
+                    ['9', '3.5.5/3: constante 12 120', 'Uitgaande van 3,5 m en ρ0·T0', 'Generieke hydrostatica'],
+                    ['10', 'Tabel 3.1.7/3: x = 13,3 g/kg', 'Afronding', 'Altijd ASHRAE (psychro.js)'],
+                    ['11', '§3.5.5.4/5: +16,3 Pa bovenin (winter)', 'Schacht gerekend t.o.v. de cascadekolom', 'Neutrale zone: schacht t.o.v. buitenlucht (+30,3 Pa)'],
+                    ['P2', 'Prototype: mistcorrectie', 'Condensaat zonder energie naar het water', 'Energiebehoudend; balans ≤ 0,02 %']
+                ],
+                valCols: ['Case', 'Grootheid', 'Model', 'Referentie', 'Tolerantie', 'Status'],
+                val: { drops: 'Eindsnelheid druppels vs Gunn & Kinzer (1949)', testrig: 'Klimaatcascade testopstelling (tab. 3.4.7)', fullscale: 'Klimaatcascade ware grootte vs CFD (tab. 3.3.9/2)', ventec: 'Ventecdak (tab. 2.5.3)', draft: 'Thermische trek, vereenvoudiging §3.5.5.4/5', chimney: 'Zonneschoorsteen (fig. 4.5.6/1, §4.5.11.3, testdag 15-12-2009)' },
+                valIntro: 'Deze tabel wordt bij het openen van dit tabblad met dezelfde rekenkern berekend. Groen = binnen de tolerantie van SPEC §12.1, oranje = daarbuiten.',
+                computing: 'Validatie wordt berekend…', ok: 'binnen tolerantie', bad: 'buiten tolerantie',
+                thesisNote: 'conventie proefschrift; met de neutrale-zonebenadering van het model +30,3 Pa (afwijking 11)',
+                balance: 'Energiebalans cascade (lucht + water): {err} % (eis < 0,1 %)', water: 'Waterbalans: ṁ_w,uit = ṁ_w,in − ṁ_ev (exact)',
+                warnText: {
+                    inputRange: 'De invoer ligt buiten het bereik waarvoor het model of het proefschrift onderbouwd is (SPEC §7). Er wordt wel gerekend.',
+                    inputClamped: 'De invoer is fysisch niet zinvol en is begrensd, zodat er geen ongeldige uitkomsten (NaN) ontstaan.',
+                    setpointUnreachable: 'Ook met de maximale water/luchtfactor koelt de cascade niet tot het setpoint: grotere waterhoeveelheid, kouder water of fijner spectrum nodig.',
+                    rwlMin: 'Bij de minimale RW/L wordt de lucht al kouder dan het setpoint; buiten de cascade wordt naverwarmd tot de toevoertemperatuur.',
+                    iceLikely: 'Bij vorst en weinig water bevriezen druppels of sproeiers (§3.4.8); daarom RW/L ≥ 0,5 en warmer water.',
+                    freezeTop: 'Bovenin kan het water bij koude buitenlucht onder 0,5 °C komen: bevriezingsrisico van sproeiers en druppels.',
+                    legionella: 'Boven 20 °C is de cascade niet meer intrinsiek veilig voor legionella (§3.6.3).',
+                    aerosols: 'Zeer fijne druppels (d32 < 0,5 mm) worden door de luchtstroom meegevoerd (§3.2.14).',
+                    rhOutLow: 'Normaal verlaat de lucht de cascade bijna verzadigd; een lagere RV wijst op weinig water of een korte schacht.',
+                    roomHumid: 'Met water van 13 °C droogt de cascade minder dan het conceptontwerp aanneemt (bevestigd door meting B1, §3.4.10.4); de ruimte-RV komt in de zomer boven 60 %.',
+                    condensWinter: 'Hoge RV bij vorst geeft condensrisico op koude oppervlakken zoals beglazing (§3.5.6.3).',
+                    glassHot: 'Ongehard glas kan breken boven ≈ 80 °C; gehard glas of een bypass-beveiliging is nodig (§4.1.4, §4.5.11.6).',
+                    chimneyClosed: 'Is het warmteverlies van de schoorsteen groter dan de zonnewinst, dan wordt hij gesloten en wordt via de shunt naar het dak afgezogen (§4.5.6.8).',
+                    ejectorRange: 'De Cp-formules van de ejector zijn alleen gevalideerd voor 0,1 ≤ U_ej/U_ref ≤ 0,8 (tab. 2.4.1); daarbuiten wordt de grenswaarde gebruikt.',
+                    ejectorPositive: 'Met een bovenkanaal van 1 m wordt Cp positief bij U_ej/U_ref ≥ 0,3: de ejector werkt dan tegen.',
+                    noWind: 'Zonder wind levert het Ventecdak geen over- of onderdruk; de hulpventilatoren nemen het over.',
+                    windProfile: 'Het logaritmische windprofiel is onbetrouwbaar dicht bij de verplaatsingshoogte d (ruwe bebouwing).',
+                    bblFlow: 'Het Bbl (art. 4.122 lid 2) vraagt voor kantoren minimaal 6,5 dm³/s per persoon.',
+                    balance: 'De energiebalans van lucht en water in de cascade sluit niet binnen 0,1 %; controleer de invoer (bijv. extreem weinig cellen).',
+                    cascadeOff: 'In variant A1 staat de cascade uit in het tussenseizoen: geen behandeling, geen hydraulische trek, dus een hulpventilator (§3.5.6.4).'
+                }
+            },
+            warnTitle: {
+                inputRange: 'Invoer buiten zinvol bereik', inputClamped: 'Invoer begrensd', setpointUnreachable: 'Setpoint niet haalbaar', rwlMin: 'RW/L op minimum',
+                iceLikely: 'IJsvorming waarschijnlijk', freezeTop: 'Bevriezingsrisico bovenin', legionella: 'Legionella-risico', aerosols: 'Meevoeren van aerosolen',
+                rhOutLow: 'Lage RV uit de cascade', roomHumid: 'RV ruimte te hoog', condensWinter: 'Condensrisico in de winter', glassHot: 'Glastemperatuur > 80 °C',
+                chimneyClosed: 'Zonneschoorsteen dicht (kantelpunt)', ejectorRange: 'Ejector buiten geldigheidsgebied', ejectorPositive: 'Ejector geeft overdruk',
+                noWind: 'Geen wind', windProfile: 'Windprofiel onbetrouwbaar', bblFlow: 'Bbl-debiet niet gehaald', balance: 'Energiebalans cascade', cascadeOff: 'Cascade uit (variant A1)'
+            },
             // ewf:nl-end
         },
         units: { kPa: 'kPa', m: 'm' }
@@ -471,9 +568,10 @@
         qs: { t: 't', rh: 'RH', x: 'x', h: 'h', twb: 't_wb', tdp: 't_dp' },
         cat: {
             heat: 'Heating', cool: 'Cooling', humidify: 'Humidify', dehumidify: 'Dehumidify',
-            mix: 'Mixing', hr: 'Heat recovery', other: 'Other'
+            mix: 'Mixing', hr: 'Heat recovery', ewf: 'EWF cascade', other: 'Other'
         },
         type: {
+            cascade: 'Climate cascade (Earth, Wind & Fire)',
             heat: 'Heater (constant x)',
             cool: 'Cooler — ideal (dew-point kink)',
             coil: 'Cooling coil — ADP and bypass factor',
@@ -490,6 +588,7 @@
             point: 'Free point'
         },
         typeHint: {
+            cascade: 'Water at ≈ 13 °C is sprayed at the top of a shaft; the falling droplets cool/dry (summer) or heat/humidify (winter) the air and provide hydraulic draught. Cell model after Bronsema (2013) ch. 3; the path follows the calculated profile.',
             heat: 'Sensible heating: x stays constant, a vertical line in the Mollier chart.',
             cool: 'Ideal cooling: constant x down to the dew point, then along the saturation line (condensation).',
             coil: 'Outlet lies on the straight line towards the apparatus dew point (ADP). BF = share of air bypassing the coil. If that line enters the fog region, the droplets are drained as condensate and the air leaves saturated.',
@@ -527,8 +626,9 @@
             rhRet: 'Return air RH', qs: 'Sensible heat Q_s', mw: 'Moisture gain', dp: 'Pressure rise Δp',
             pair: 'Input by', a: 'Value 1', b: 'Value 2', label: 'Custom name (optional)'
         },
-        fieldBy: { 'fan.eff': 'Fan total efficiency', 'mix.flow2.fraction': 'Stream 2 share of mix', 'mix.flow2.volume': 'Stream 2 volume flow', 'mix.flow2.mass': 'Stream 2 mass flow (dry air)' },
+        fieldBy: { 'cascade.H': 'Active cascade height', 'cascade.w': 'Air velocity', 'cascade.rwl': 'Water/air ratio RW/L', 'cascade.tW': 'Spray water temperature', 'cascade.spray': 'Spray spectrum', 'cascade.w0': 'Initial droplet velocity', 'fan.eff': 'Fan total efficiency', 'mix.flow2.fraction': 'Stream 2 share of mix', 'mix.flow2.volume': 'Stream 2 volume flow', 'mix.flow2.mass': 'Stream 2 mass flow (dry air)' },
         opt: {
+            fulljet: 'Fulljet 3/4GG-3050 (test rig)', s1: 'Spectrum 1 (d30 4.01 mm)', s2: 'Spectrum 2 (d30 3.61 mm)', s3: 'Spectrum 3 (d30 3.21 mm)', s4: 'Spectrum 4 (d30 2.81 mm)', s5: 'Spectrum 5 (d30 2.41 mm)', s6: 'Spectrum 6 (d30 2.01 mm)', s7: 'Spectrum 7 (d30 1.61 mm)', s8: 'Spectrum 8 (d30 1.20 mm)', s9: 'Spectrum 9 (d30 0.80 mm)', s10: 'Spectrum 10 (d30 0.40 mm)',
             rh: 'Relative humidity', x: 'Humidity ratio', fraction: 'Share of mix (%)', volume: 'Volume flow (m³/h)',
             mass: 'Mass flow (kg/h)', sensible: 'Plate / run-around (sensible)', enthalpy: 'Enthalpy wheel (heat + moisture)'
         },
@@ -542,6 +642,7 @@
             disabled: 'disabled', blocked: 'blocked by invalid start point', of: '{n} steps'
         },
         desc: {
+            cascade: 'Climate cascade H {h} m · RW/L {rwl} · water {tw} °C',
             'heat.toT': 'Heat to {v} °C', 'heat.dT': 'Heat +{v} K', 'heat.power': 'Heat {v} kW',
             'heat.toH': 'Heat to {v} kJ/kg', 'heat.toRH': 'Heat to {v} % RH',
             'cool.toT': 'Cool to {v} °C', 'cool.dT': 'Cool −{v} K', 'cool.power': 'Cool {v} kW', 'cool.toRH': 'Cool to {v} % RH',
@@ -559,7 +660,7 @@
         },
         info: {
             bf: 'BF {bf} · ADP {adp} °C', dry: 'dry coil (no condensation)', eff: 'η {eff} %', share: 'share {share} %',
-            gamma: 'Δh/Δx {g} kJ/kg', power: 'energy {p} kW'
+            gamma: 'Δh/Δx {g} kJ/kg', power: 'energy {p} kW', cascade: 't_w,out {tw} °C · Δp_hydr {dp} Pa'
         },
         kpi: {
             heating: 'Heating', cooling: 'Cooling', recovered: 'Heat recovery', humid: 'Humidification',
@@ -603,6 +704,7 @@
             name: 'Example air handling unit', winter: 'Winter', summer: 'Summer', newName: 'New project'
         },
         err: {
+            ERR_CASCADE_H: 'Cascade height must be between 0.5 and 200 m.', ERR_CASCADE_RWL: 'RW/L must be between 0 and 5.',
             ERR_INVALID: 'Invalid or missing input.',
             ERR_OUT_OF_RANGE: 'Outside the validity range (−100…200 °C).',
             ERR_T_RANGE: 'Temperature outside −100…200 °C.',
@@ -853,6 +955,98 @@
                     pOver: 'p_over', pEj: 'p_ej', minSupply: 'min. supply margin', minExhaust: 'min. exhaust margin', Pfan: 'P_fan', Ppump: 'P_pump',
                     COP: 'COP', warn: '⚠'
                 }
+            },
+            mo: {
+                title: 'Process chain in the h,x chart', open: 'Open in Mollier chart', opened: 'Scenario "{name}" updated in the Mollier chart',
+                legend: '1 outdoor air · 2 leaving cascade · 3 supply (after reheating) · 4 room/exhaust · 5 top of solar chimney · 6 after FiWiHEx',
+                note: 'Path 1→2 follows the calculated cascade profile (curved); the thesis draws it straight for convenience (§3.1.7.6).',
+                reheat: 'Reheating', fiwi: 'FiWiHEx', live: 'Weather now', manual: 'Manual weather', hover: 'Move over the chart to read values.',
+                s1: 'Outdoor air', s2: 'Leaving the climate cascade', s3: 'Supply (after reheating)', s4: 'Room / exhaust air', s5: 'Top of solar chimney', s6: 'After FiWiHEx'
+            },
+            m: {
+                intro: 'Quasi-steady snapshot of the complete EWF system for one weather case at a constant controlled ventilation rate (§2.5.5, §3.5.5.8, §4.5.5). For every floor the tool checks whether the natural driving forces suffice: a surplus is throttled by dampers, a deficit is made up by an auxiliary fan. The building is a neutral zone (§3.5.5.2), so supply and exhaust are balanced separately.',
+                disclaimer: 'Quasi-steady design model for exploration; not a substitute for CFD, wind-tunnel testing or dynamic building simulation. Validation based on scale experiments (Bronsema 2013).',
+                sec: { model: 'Model per component', assume: 'Assumptions', dev: 'Deliberate deviations from the thesis', val: 'Validation (calculated live)', warn: 'Messages: why?', lit: 'Sources', check: 'Checks of the current calculation' },
+                comp: [
+                    { h: 'Wind and Ventec roof (ch. 2)', p: 'The KNMI wind speed at 10 m (potential wind) is translated via the meso wind at 60 m to roof height with a logarithmic profile. The windward inlet gives overpressure, the venturi ejector in the throat gives suction. Without guide vanes the Ventec roof is independent of wind direction (§2.2.4).',
+                        eq: ['U_meso = U10 · ln(60/0.03) / ln(10/0.03)   (2.1.1)', 'U(z) = U_meso · ln((z − d)/z0) / ln(60/z0)   (2.5.1–2.5.3)', 'p_over = Cp_in · ½·ρ_e·U_ref², Cp_in = 0.8   (2.1.4)', 'Cp_ej = 0.2913·ln(U_ej/U_ref) + 0.0151 (c = 2 m, 2.3.2) · 0.5374·ln(·) + 0.6381 (c = 1 m, 2.3.1)'] },
+                    { h: 'Climate cascade (ch. 3)', p: 'Cell model (400 cells) from top to bottom: droplet velocity from a momentum equation with C_d(Re), heat and mass transfer per Ranz-Marshall on the Sauter area, evaporation/condensation over liquid water, fog isenthalpically to saturation. The weight of the suspended water provides the hydraulic draught. In cooling mode the control finds the RW/L at which the air leaves at 17 °C; in heating mode RW/L is 0.9 (frost protection).',
+                        eq: ['a = g·(1 − ρ_a/ρ_w) − ¾·(ρ_a/ρ_w)·C_d·w_r·|w_r|/d30   (3.2.4/4)', 'A = 6·V_water/d32   (Sauter; deviation from 3.2.5/7)', 'h_c = (2 + 0.6·Pr^⅓·Re^½)·λ/d32   (3.2.6/1); β likewise with Sc   (3.2.7/1)', 'ṁ_ev = β·A·(ρ_v,s(t_w) − ρ_v,air)   (3.2.2/3)', 'Δp_hydr = Σ (ṁ_w/A_c)·g·Δt   (3.2.15/3–6)'] },
+                    { h: 'Supply pressure balance (§3.5.5)', p: 'The available pressure per floor follows from the Ventec roof overpressure, the hydraulic and thermal draught of the cascade, the supply shaft column and the design pressure loss of the distribution system. The thermal draught is always integrated over the calculated profile (§3.3.10).',
+                        eq: ['Δp_th,cc = Σ g·Δz·(ρ_profile − ρ_e)', 'P_k = p_over + Δp_hydr + Δp_th,cc − g·z_k·(ρ_sup − ρ_e) − Δp_sup,design,  z_k = (k − ½)·h_floor'] },
+                    { h: 'Room', p: 'Supply after any reheating (17 °C cooling, 18 °C heating). The room adds moisture (65 g/h per person); the ventilation air provides base cooling or heating, the rest is for the chilled ceilings. Comfort limit RH ≤ 60 % and x ≤ 12 g/kg (§3.1.5.5).',
+                        eq: ['x_room = x_sup + G_moist/ṁ_da', 'Q_vent = ṁ_da·(c_p,da + c_p,v·x_sup)·(t_room − t_sup);  Q_rest = Q_int − Q_vent'] },
+                    { h: 'Solar chimney and FiWiHEx (ch. 4)', p: 'Per segment (4 per floor) an energy balance of glass, air and absorber wall with radiation, convection (Churchill-Usagi: natural and forced convection) and losses to outside and inside. If the yield is negative the chimney closes (tipping point §4.5.6.8) and exhaust runs via the shunt to the roof. The FiWiHEx is modelled simply (assumption).',
+                        eq: ['S = R·g·(Φ_beam·k(θ) + Φ_diff·0.874),  k(θ) = g(θ)/g(0)   (fig. 4.2.2)', 'h_c = [(1.5·|Δθ|^⅓)³ + (7.65·w)³]^⅓   (4.2.4/4, 4.2.4/9)', 'η = Q_sc/(R·B·H·Φ)   (4.5.6/1);  Δp_th,sc = Σ g·Δz·(ρ_e − ρ_sc)   (4.2.6/1)', 'Q_hr = ε·ṁ_da·c_p·max(0, t_top − t_w,in)'] },
+                    { h: 'Exhaust pressure balance (§4.2.7, §4.5.5)', p: 'From the grille on floor k down the shunt, up the solar chimney and via FiWiHEx and ejector to outside. In winter the shunt column costs draught, so the top floors have the least left.',
+                        eq: ['A_k = Δp_th,sc + g·z_k·(ρ_room − ρ_e) − p_ej − Σ losses   (open)', 'A_k = g·(H − z_k)·(ρ_e − ρ_room) − p_ej − Σ losses   (closed)', 'λ = 0.25 / [log10(ε/(3.72·D_h) + 5.74/Re^0.901)]²   (4.2.7/3)'] },
+                    { h: 'Energy (§3.5.4, §4.5.11)', p: 'Auxiliary fans sized for the worst floor; spray pump from head and water flow; source pump from the heat transport. COP in cooling mode only. Reference: conventional AHU per the case study (§7.5.2).',
+                        eq: ['P_fan = q_v·(Δp_sup + Δp_exh)/(0.85·0.90)   (4.5.11/1)', 'P_spray = ρ_w·g·h_pump·q_w/0.75   (3.5.4/1–3)', 'COP = |Q_cool| / (P_spray + P_source)   (3.5.4/4)'] },
+                    { h: 'Sun and weather', p: 'Solar position per NOAA. From the global irradiance Erbs estimates beam and diffuse; Hay-Davies transposes them to the facade. "Weather now" comes from the KNMI model HARMONIE-AROME via Open-Meteo (model value, not a measurement); facade irradiance then follows from DNI and GTI.',
+                        eq: ['beam = DNI·cos θ + circumsolar;  diffuse = isotropic + ground (ρ_g = 0.2)', 'live: beam = DNI·cos θ,  diffuse = GTI − beam'] }
+                ],
+                assumeCols: ['Assumption', 'Value', 'Note'],
+                assume: [
+                    ['Roof structure above the top floor', '4 m', 'plant floor 3.7 m (fig. 2.2.2)'],
+                    ['Displacement height d, terrain class 7 / 8', '10 / 15 m', 'thesis gives class 6 only'],
+                    ['Shunt duct shape', 'square, 1.0 m/s', 'D_h = side'],
+                    ['FiWiHEx', 'ε 0.7 · t_w 20 °C · Δp 10 Pa', 'simple model (§4.5.8.2)'],
+                    ['Spray pump pipe length', 'H + 10 m', '§3.5.4.2 gives R and Δp_local'],
+                    ['Variant A1 (mid-season)', '10 °C ≤ θ_e ≤ 17 °C', 'definition of mid-season'],
+                    ['Outdoor air density', 'constant with height', 'pressure gradient neglected'],
+                    ['Cascade wall heat', 'neglected', 'share 3–5 % (§3.5.2.3)'],
+                    ['Weather cases marked *', 'wind and facade irradiance', 'see the note per weather case']
+                ],
+                devCols: ['#', 'Thesis', 'Problem', 'Choice'],
+                dev: [
+                    ['1', 'Droplet area 3.2.5/7 ∝ d32²/d30³', 'Correct is 6V/d32; ≈ 2× too large', 'A = 6V/d32; coarse spectra (s1–s7) cool less than table 3.5.2/1'],
+                    ['2', 'Terminal velocity 3.2.4/6', 'Contradicts Gunn & Kinzer', 'Force balance with C_d(Re)'],
+                    ['3', 'CWC 7.65·w and 6.5·w', 'Two values', '7.65·w, blended with natural convection'],
+                    ['4', 'Node equations 4.2.5/13–15', 'Typos, inner-wall loss missing', 'Correct energy balances'],
+                    ['5', 'Aerodynamic draught 3.2.15/2', 'Not demonstrable in measurements', 'Information only'],
+                    ['6', 'Thermal draught with mean temperature', 'Profile non-linear', 'Integration over the profile'],
+                    ['7', 'Table 3.3.9/2', 'Water volume vs mass flow', 'RW/L × ṁ_da'],
+                    ['8', 'Case study: 200 kW cooling', 'Does not match Δh', 'Not used for validation'],
+                    ['9', '3.5.5/3: constant 12 120', 'Assumes 3.5 m and ρ0·T0', 'Generic hydrostatics'],
+                    ['10', 'Table 3.1.7/3: x = 13.3 g/kg', 'Rounding', 'Always ASHRAE (psychro.js)'],
+                    ['11', '§3.5.5.4/5: +16.3 Pa at the top (winter)', 'Shaft taken relative to the cascade column', 'Neutral zone: shaft relative to outdoor air (+30.3 Pa)'],
+                    ['P2', 'Prototype: fog correction', 'Condensate added to the water without energy', 'Energy-conserving; balance ≤ 0.02 %']
+                ],
+                valCols: ['Case', 'Quantity', 'Model', 'Reference', 'Tolerance', 'Status'],
+                val: { drops: 'Droplet terminal velocity vs Gunn & Kinzer (1949)', testrig: 'Climate cascade test rig (table 3.4.7)', fullscale: 'Climate cascade full scale vs CFD (table 3.3.9/2)', ventec: 'Ventec roof (table 2.5.3)', draft: 'Thermal draught, simplification §3.5.5.4/5', chimney: 'Solar chimney (fig. 4.5.6/1, §4.5.11.3, test day 15-12-2009)' },
+                valIntro: 'This table is calculated with the same core when this tab is opened. Green = within the tolerance of SPEC §12.1, orange = outside.',
+                computing: 'Calculating validation…', ok: 'within tolerance', bad: 'outside tolerance',
+                thesisNote: 'thesis convention; with the neutral-zone approach of the model +30.3 Pa (deviation 11)',
+                balance: 'Cascade energy balance (air + water): {err} % (requirement < 0.1 %)', water: 'Water balance: ṁ_w,out = ṁ_w,in − ṁ_ev (exact)',
+                warnText: {
+                    inputRange: 'The input is outside the range for which the model or the thesis is substantiated (SPEC §7). The calculation still runs.',
+                    inputClamped: 'The input is not physically meaningful and has been limited so that no invalid results (NaN) occur.',
+                    setpointUnreachable: 'Even at the maximum water/air ratio the cascade does not reach the set point: more water, colder water or a finer spectrum is needed.',
+                    rwlMin: 'At the minimum RW/L the air already gets colder than the set point; it is reheated to the supply temperature outside the cascade.',
+                    iceLikely: 'In frost with little water, droplets or nozzles freeze (§3.4.8); hence RW/L ≥ 0.5 and warmer water.',
+                    freezeTop: 'At the top the water can drop below 0.5 °C with cold outdoor air: freezing risk for nozzles and droplets.',
+                    legionella: 'Above 20 °C the cascade is no longer intrinsically safe against legionella (§3.6.3).',
+                    aerosols: 'Very fine droplets (d32 < 0.5 mm) are carried along by the air flow (§3.2.14).',
+                    rhOutLow: 'Normally the air leaves the cascade nearly saturated; a lower RH indicates little water or a short shaft.',
+                    roomHumid: 'With 13 °C water the cascade dehumidifies less than the concept design assumes (confirmed by measurement B1, §3.4.10.4); room RH exceeds 60 % in summer.',
+                    condensWinter: 'High RH in frost gives a risk of condensation on cold surfaces such as glazing (§3.5.6.3).',
+                    glassHot: 'Non-toughened glass may break above ≈ 80 °C; toughened glass or bypass protection is needed (§4.1.4, §4.5.11.6).',
+                    chimneyClosed: 'If the chimney heat loss exceeds the solar gain it is closed and exhaust runs via the shunt to the roof (§4.5.6.8).',
+                    ejectorRange: 'The ejector Cp formulas are only validated for 0.1 ≤ U_ej/U_ref ≤ 0.8 (table 2.4.1); outside that range the limit value is used.',
+                    ejectorPositive: 'With a 1 m upper channel Cp becomes positive at U_ej/U_ref ≥ 0.3: the ejector then counteracts.',
+                    noWind: 'Without wind the Ventec roof gives no over- or underpressure; the auxiliary fans take over.',
+                    windProfile: 'The logarithmic wind profile is unreliable close to the displacement height d (rough built-up area).',
+                    bblFlow: 'The Dutch Bbl (art. 4.122(2)) requires at least 6.5 dm³/s per person for offices.',
+                    balance: 'The air/water energy balance of the cascade does not close within 0.1 %; check the input (e.g. extremely few cells).',
+                    cascadeOff: 'In variant A1 the cascade is off in mid-season: no treatment, no hydraulic draught, hence an auxiliary fan (§3.5.6.4).'
+                }
+            },
+            warnTitle: {
+                inputRange: 'Input outside sensible range', inputClamped: 'Input limited', setpointUnreachable: 'Set point not reachable', rwlMin: 'RW/L at minimum',
+                iceLikely: 'Ice formation likely', freezeTop: 'Freezing risk at the top', legionella: 'Legionella risk', aerosols: 'Aerosol carry-over',
+                rhOutLow: 'Low RH leaving the cascade', roomHumid: 'Room RH too high', condensWinter: 'Condensation risk in winter', glassHot: 'Glass temperature > 80 °C',
+                chimneyClosed: 'Solar chimney closed (tipping point)', ejectorRange: 'Ejector outside validity range', ejectorPositive: 'Ejector gives overpressure',
+                noWind: 'No wind', windProfile: 'Wind profile unreliable', bblFlow: 'Bbl flow rate not met', balance: 'Cascade energy balance', cascadeOff: 'Cascade off (variant A1)'
             },
             // ewf:en-end
         },

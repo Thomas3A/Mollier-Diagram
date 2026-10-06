@@ -113,6 +113,23 @@
     // =====================================================================
     // 2. Klimaatcascade (hoofdstuk 3)
     // =====================================================================
+    /** Sproeispectra: Fulljet uit de testopstelling (§3.4.10.1) en tabel 3.2.3/2 (d10/d20/d30/d32 in m). */
+    const SPRAY = {
+        fulljet: { d30: 1.048e-3, d32: 1.317e-3, src: '§3.4.10.1' },
+        s1: { d10: 2.95e-3, d20: 3.55e-3, d30: 4.01e-3, d32: 5.14e-3 },
+        s2: { d10: 2.65e-3, d20: 3.19e-3, d30: 3.61e-3, d32: 4.62e-3 },
+        s3: { d10: 2.36e-3, d20: 2.84e-3, d30: 3.21e-3, d32: 4.11e-3 },
+        s4: { d10: 2.06e-3, d20: 2.48e-3, d30: 2.81e-3, d32: 3.60e-3 },
+        s5: { d10: 1.77e-3, d20: 2.13e-3, d30: 2.41e-3, d32: 3.08e-3 },
+        s6: { d10: 1.47e-3, d20: 1.77e-3, d30: 2.01e-3, d32: 2.57e-3 },
+        s7: { d10: 1.18e-3, d20: 1.42e-3, d30: 1.61e-3, d32: 2.05e-3 },
+        s8: { d10: 0.88e-3, d20: 1.06e-3, d30: 1.20e-3, d32: 1.54e-3 },
+        s9: { d10: 0.59e-3, d20: 0.71e-3, d30: 0.80e-3, d32: 1.03e-3 },
+        s10: { d10: 0.29e-3, d20: 0.35e-3, d30: 0.40e-3, d32: 0.51e-3 },
+        custom: null
+    };
+    for (let i = 1; i <= 10; i++) SPRAY['s' + i].src = 'tab. 3.2.3/2';
+
     /** Weerstandscoëfficiënt bol, Schiller-Naumann (1933) = "Wallis (1969)" in 3.2.4/3. */
     function cdSphere(Re) {
         if (Re < 1e-9) return 1e9;
@@ -324,7 +341,7 @@
     }
 
     return {
-        G, P_STD, RHO_W, CP_W, CP_DA, CP_V, R_DA, R_V, SIGMA, RHO_REF, EPS_GLASS, K_DIFFUSE,
+        G, P_STD, RHO_W, CP_W, CP_DA, CP_V, R_DA, R_V, SIGMA, RHO_REF, EPS_GLASS, K_DIFFUSE, SPRAY,
         hAir, rhoMoist, rEvap, rhFrom, tSatFromH, airProps,
         windAtHeight, cpEjector, ventecdak,
         cdSphere, dropTerminal, cascade, cascadeAutoRwl, stackDraft,
