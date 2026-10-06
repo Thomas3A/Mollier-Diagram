@@ -67,6 +67,13 @@
         return Math.exp(ln);
     }
 
+    /** Verzadigingsdampdruk boven (onderkoeld) vloeibaar water, ook onder 0 °C (Hyland-Wexler eq. 6) [Pa]. */
+    function satVapPresLiquid(t) {
+        const T = clampT(t) + 273.15;
+        return Math.exp(-5.8002206e3 / T + 1.3914993 - 4.8640239e-2 * T + 4.1764768e-5 * T * T
+            - 1.4452093e-8 * T * T * T + 6.5459673 * Math.log(T));
+    }
+
     /** d(ln p_ws)/dt, analytisch — voor Newton-Raphson. */
     function dLnPws(t) {
         const T = clampT(t) + 273.15;
@@ -308,7 +315,7 @@
         RA, R_DA, CP_DA, CP_V, R0, CP_W, CP_ICE, H_FUS, T_TRIPLE, T_LO, T_HI, P_STD,
         PsychroError, PAIRS,
         pressureFromAltitude, altitudeFromPressure,
-        satVapPres, tFromSatPres, satHumRatio, xFromTRh, xFromPw, pwFromX,
+        satVapPres, satVapPresLiquid, tFromSatPres, satHumRatio, xFromTRh, xFromPw, pwFromX,
         enthalpy, tFromHx, hCondensed, hSat, hFog,
         xFromTwb, wetBulb, specificVolume,
         state, fromHx, fromPair, pairValues, solve

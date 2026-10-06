@@ -58,3 +58,10 @@ test('ongeldige invoer geeft foutcode', () => {
     assert.throws(() => P.fromPair('t-tdp', 10, 15, 101325), { code: 'ERR_TDP_ABOVE_T' });
     assert.throws(() => P.fromPair('t-x', 20, -0.001, 101325), { code: 'ERR_X_NEGATIVE' });
 });
+
+test('verzadigingsdampdruk boven onderkoeld water (Hyland-Wexler eq. 6)', () => {
+    for (const t of [0.5, 13, 25, 60]) near(P.satVapPresLiquid(t), P.satVapPres(t), 1e-9 * P.satVapPres(t), `t=${t}`);
+    // Onder 0 °C: boven water hoger dan boven ijs (ASHRAE: −10 °C → 286,5 resp. 259,9 Pa)
+    near(P.satVapPresLiquid(-10), 286.5, 0.3, 'water −10 °C');
+    near(P.satVapPres(-10), 259.9, 0.3, 'ijs −10 °C');
+});

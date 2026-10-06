@@ -48,6 +48,32 @@ Geen build-stap, geen server: statische HTML + JavaScript. Werkt ook offline (D3
 - Nederlands en Engels, licht en donker thema, bruikbaar op telefoon en tablet.
 - Projecten uit de vorige versie worden automatisch overgenomen.
 
+## Earth, Wind & Fire
+
+Tweede weergave (schakelaar in de topbalk of toets `E`): een fysisch onderbouwde **momentopname van het
+Earth, Wind & Fire-concept** (Ventecdak, klimaatcascade, zonneschoorsteen) voor een kantoorgebouw in
+Nederland, naar B. Bronsema (2013), *Earth, Wind & Fire – Natuurlijke Airconditioning*, proefschrift TU Delft.
+
+- **Standaard staat het 8-laags kantoor uit het proefschrift ingevuld** (8 × 1000 m² AVO, 40 320 m³/h); alle
+  gebouw- en systeemparameters zijn aanpasbaar, met bron, zinvol bereik en de badge *aanname* waar het
+  proefschrift geen waarde geeft.
+- **Weer:** 12 realistische Nederlandse weersituaties (ontwerpcondities en echte KNMI-uren De Bilt),
+  handmatige invoer en **“Weer van nu in De Bilt”** (KNMI HARMONIE-AROME via Open-Meteo, geen sleutel nodig).
+- **Resultaten:** luchtbehandeling in de cascade (automatische water/luchtfactor), drukopbouw door wind,
+  hydraulische en thermische trek, zonneschoorsteen en FiWiHEx, drukbalans per verdieping (smoren of
+  hulpventilator), pomp- en ventilatorvermogens, COP en comfortcontrole.
+- **Visualisatie:** schematische doorsnede (kleur = temperatuur, geanimeerde luchtweg en druppels, nummering
+  1–9 zoals de conceptschets), cascadeprofiel, drukbalans met opbouw, zonneschoorsteen, energie,
+  tabel per verdieping, vergelijking van alle weersituaties en een mini-Mollier met de procesketen.
+- **Koppeling:** “Open in Mollier-diagram” zet de procesketen als scenario in het Mollier-diagram, met het
+  nieuwe procestype *klimaatcascade*. EWF-invoer gaat mee in opslaan, delen (`#p=`) en ongedaan maken.
+- **Methode & bronnen** in de app (met live validatietabel) en uitgebreid in [`docs/ewf/METHODE.md`](docs/ewf/METHODE.md);
+  de specificatie staat in [`docs/ewf/SPEC.md`](docs/ewf/SPEC.md), de referentie-implementatie in
+  `docs/ewf/ewf_prototype.py`.
+
+Quasi-stationair ontwerpmodel ter verkenning; geen vervanging voor CFD, windtunnelonderzoek of dynamische
+gebouwsimulatie. Weergegevens: Open-Meteo.com (CC BY 4.0), model KNMI HARMONIE-AROME — modelwaarde, geen meting.
+
 ## Rekenmethode
 
 ASHRAE Handbook – Fundamentals 2017, hoofdstuk 1:
@@ -71,7 +97,7 @@ Open `index.html` in een moderne browser, of start een lokale server:
 
 ```bash
 npm start        # http://localhost:8080
-npm test         # rekenkern- en procestests (Node 18+)
+npm test         # rekenkern-, proces- en EWF-tests (Node 18+)
 ```
 
 ## Bestanden
@@ -84,9 +110,18 @@ npm test         # rekenkern- en procestests (Node 18+)
 | `js/processes.js`        | Processtappen, scenario-doorrekening, vermogens |
 | `js/chart.js`            | Mollier- en psychrometrisch diagram (SVG/D3), zoom, slepen, export |
 | `js/i18n.js`             | Teksten NL/EN en getalnotatie |
-| `js/app.js`              | Toestand, formulieren, tabellen, geschiedenis, opslaan en delen |
+| `js/app.js`              | Toestand, formulieren, tabellen, geschiedenis, opslaan en delen, weergaveschakelaar |
+| `js/ewf/physics.js`      | EWF-fysica: wind/Ventecdak, klimaatcascade, zonneschoorsteen, trek, wrijving (geen DOM) |
+| `js/ewf/solar.js`        | Zonnestand (NOAA), Erbs, Hay-Davies, invalshoekcorrectie (geen DOM) |
+| `js/ewf/model.js`        | Standaardgebouw, invoerschema, weerpresets, `simulate()`, validatie (geen DOM) |
+| `js/ewf/weather.js`      | “Weer van nu” via Open-Meteo (KNMI HARMONIE-AROME) |
+| `js/ewf/schematic.js`    | Schematische doorsnede (SVG) |
+| `js/ewf/charts.js`       | EWF-grafieken (D3) |
+| `js/ewf/view.js`         | EWF-weergave: panelen, KPI's, meldingen, tabbladen |
+| `css/ewf.css`            | Stijl EWF-weergave |
+| `docs/ewf/`              | Specificatie, rekenmethode en validatie, referentie-implementatie (Python) |
 | `vendor/d3.min.js`       | D3 v7.9.0 (ISC-licentie) |
-| `test/`                  | Tests en PsychroLib-referentiewaarden |
+| `test/`                  | Tests, PsychroLib-referentiewaarden, EWF-orakel en weer-fixture |
 
 ## GitHub Pages
 
