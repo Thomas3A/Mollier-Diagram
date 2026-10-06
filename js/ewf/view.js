@@ -107,8 +107,20 @@
                 <div class="results-head"><div class="tabs ewf-tabs" role="tablist" id="ewf-tabs">${tabs}</div>
                 <button type="button" class="tb-btn sm" id="ewf-csv"><svg><use href="#i-download"/></svg><span>${esc(t('ewf.tbl.csv'))}</span></button></div>
                 <div class="ewf-pane" id="ewf-pane" role="tabpanel"></div>
-            </div>`;
+            </div>
+            <div class="ewf-print-floors" id="ewf-print-floors" aria-hidden="true"></div>`;
         if (root.EwfSchematic) S.schematic = root.EwfSchematic.create($('#ewf-schema-card'), schematicCallbacks());
+        // Grafieken opnieuw tekenen als de breedte van het tabblad verandert
+        if (root.ResizeObserver) {
+            let lastW = 0, timer = 0;
+            new ResizeObserver((ent) => {
+                const w = Math.round(ent[0].contentRect.width);
+                if (Math.abs(w - lastW) < 8) return;
+                lastW = w;
+                clearTimeout(timer);
+                timer = setTimeout(() => { if (S.visible && S.result) renderTab(); }, 120);
+            }).observe($('#ewf-pane'));
+        }
     }
 
     // =====================================================================
@@ -267,6 +279,7 @@
         renderKPIs(r);
         renderWarnings(r);
         if (S.schematic) S.schematic.update(r, ctx());
+        $('#ewf-print-floors').innerHTML = floorsTable(r);
         renderTab();
     }
 
@@ -398,7 +411,7 @@
     }
     function energyTable(r) {
         const rows = energyRows(r).map(([k, v, cls]) => `<tr class="${cls}"><td class="l">${esc(t('ewf.energy.' + k))}</td><td>${signed(v / 1000, 1)}</td></tr>`).join('');
-        return `<div class="ewf-energy"><div class="ewf-chart" id="ewf-chart-energy"></div>`
+        return `<div class="ewf-energy"><div class="ewf-energy-charts" id="ewf-chart-energy"></div>`
             + `<div class="table-wrap"><table class="data-table ewf-table"><thead><tr>${th(t('ewf.energy.item'), '', 'l')}${th('P / Q', 'kW')}</tr></thead><tbody>${rows}</tbody></table>`
             + `<p class="hint">${esc(t('ewf.energy.note'))}</p></div></div>`;
     }
