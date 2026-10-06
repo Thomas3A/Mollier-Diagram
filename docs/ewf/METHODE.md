@@ -312,14 +312,18 @@ NEN 5060 (referentieklimaatjaren) wordt alleen genoemd: de data zijn auteursrech
 
 ## 9. Open punten
 
-Afgehandeld: **thermische trek bovenin (afwijking #11)** — de opdrachtgever heeft op 6-10-2026 bevestigd dat SPEC §5.4
-maatgevend is (+30,3 Pa bij −10 °C met een toevoerschacht van 18 °C).
-
+Afgehandeld:
+- **Thermische trek bovenin (afwijking #11).** De opdrachtgever heeft op 6-10-2026 bevestigd dat SPEC §5.4
+  maatgevend is (+30,3 Pa bij −10 °C met een toevoerschacht van 18 °C).
 - **Live-weer op GitHub Pages.** Mapping, foutafhandeling, time-out en cache zijn getest met de voorbeeldrespons;
-  de echte API was vanuit de bouwomgeving niet bereikbaar. Na publicatie één keer live controleren.
+  op 6-10-2026 heeft de opdrachtgever "Weer van nu in De Bilt" op de live site getest tegen de echte Open-Meteo-API:
+  werkt.
 
+Nog open (bewuste vereenvoudigingen, kandidaat voor een volgende versie):
 - **Massastroom zonneschoorsteen (P3).** Overgenomen uit het prototype; een massabehoudende formulering verlaagt
   t_uit tot 0,26 K (Q gelijk). Kandidaat voor een volgende versie, samen met een nieuw orakel.
 - **Luchtvochtigheid in de schoorsteen.** De dichtheid in de schoorsteen wordt (zoals in het prototype) met x_e
   berekend i.p.v. x_ruimte. In de zomer is het verschil verwaarloosbaar; bij vorst is de afvoerlucht ≈ 6 g/kg
   vochtiger dan de buitenlucht en wordt de trek daardoor ≈ 1 Pa onderschat (8 lagen, open schoorsteen).
+- **Fase 6 (optioneel, SPEC §13).** Dagverloop uit de uurverwachting en een modus "vrij stromend" (debiet uit
+  drukevenwicht) zijn niet gebouwd.
