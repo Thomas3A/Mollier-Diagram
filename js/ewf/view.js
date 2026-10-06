@@ -213,6 +213,7 @@
         $$('#ewf-src button', side).forEach((x) => x.setAttribute('aria-selected', String(x.dataset.src === st.weather.source)));
         $('#ewf-preset-fld').hidden = st.weather.source !== 'preset';
         $('#ewf-preset-info').hidden = st.weather.source !== 'preset';
+        $('#ewf-live').hidden = st.weather.source !== 'live' && !S.weatherBusy;
         setVal($('#ewf-preset'), st.weather.presetId);
         $('#ewf-preset-info').textContent = t(`ewf.preset.${st.weather.presetId}.info`);
         for (const el of $$('[data-scope="w"]', side)) {
@@ -250,11 +251,7 @@
         set('ewf-sun', r.rad.method === 'manual'
             ? t('ewf.hint.sunManual', { alt: fmt(sun.alt, 1), az: fmt(sun.az, 0), phi: fmt(r.rad.total, 0) })
             : t('ewf.hint.sun', { alt: fmt(sun.alt, 1), az: fmt(sun.az, 0), beam: fmt(r.rad.beam, 0), diff: fmt(r.rad.diffuse, 0), th: fmt(r.rad.theta, 0) }));
-        const ws = ewf().weather;
-        set('ewf-stamp', ws.source === 'preset' ? t('ewf.weather.stampPreset', { name: t(`ewf.preset.${ws.presetId}.name`) })
-            : ws.source === 'live' ? t('ewf.weather.stamp', { time: new Date(w.time).toLocaleString(app.lang === 'nl' ? 'nl-NL' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }) })
-                + ' · ' + t('ewf.weather.attribution')
-                : t('ewf.weather.stampManual'));
+        set('ewf-stamp', weatherSource(w, false));
         // Samenvatting in de paneelkop (ook zichtbaar als het paneel dicht is)
         set('ewf-sum-weather', `${fmt(w.t, 1)} °C · ${fmt(w.rh, 0)} % · ${fmt(w.U10, 1)} m/s`);
         set('ewf-sum-building', `${b.floors} × ${fmt(b.avoFloor, 0)} m²`);
@@ -267,6 +264,15 @@
         const mode = $('#ewf-mode');
         mode.className = 'ewf-mode ' + r.mode;
         mode.textContent = t('ewf.modeLong.' + r.mode);
+    }
+
+    /** Herkomst van het weer; live altijd met de verplichte bronvermelding (SPEC §6.2). */
+    function weatherSource(w, withAttribution) {
+        const ws = ewf().weather;
+        if (ws.source === 'preset') return t('ewf.weather.stampPreset', { name: t(`ewf.preset.${ws.presetId}.name`) });
+        if (ws.source === 'manual') return t('ewf.weather.stampManual');
+        const time = new Date(w.time).toLocaleString(app.lang === 'nl' ? 'nl-NL' : 'en-GB', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Amsterdam' });
+        return t('ewf.weather.stamp', { time }) + (withAttribution ? ' · ' + t('ewf.weather.attribution') : '');
     }
 
     // =====================================================================
@@ -358,7 +364,8 @@
             + (items.length ? `<ul class="ewf-warn">${items.map((w) => `<li class="${w.level}"><span class="ico" aria-hidden="true"></span>`
                 + `<span>${esc(t('ewf.warn.' + w.code, warnVars(w)))}</span>`
                 + ` <button type="button" class="ewf-why" data-why="${w.code}">${esc(t('ewf.why'))}</button></li>`).join('')}</ul>`
-                : `<p class="hint">${esc(t('ewf.noWarn'))}</p>`);
+                : `<p class="hint">${esc(t('ewf.noWarn'))}</p>`)
+            + `<p class="hint ewf-wsrc">${esc(t('ewf.weather.source'))}: ${esc(weatherSource(r.inputs.weather, true))}</p>`;
     }
 
     // =====================================================================
@@ -493,8 +500,35 @@
             app.savePrefs();
         }, true);
 
+        side.addEventListener('click', (e) => { if (e.target.closest('#ewf-live-btn')) fetchLive(); });
+        side.addEventListener('change', (e) => {
+            if (e.target.id !== 'ewf-station') return;
+            const v = e.target.value;
+            app.change((pj) => { pj.ewf.options.station = v; });
+            if (ewf().weather.source === 'live') fetchLive();
+        });
+
         const content = $('#ewf-content');
+        const loadPreset = (tr) => {
+            const id = tr.dataset.preset;
+            app.change((pj) => { pj.ewf.weather = { source: 'preset', presetId: id, values: M.presetWeather(id), fetchedAt: null }; });
+            app.toast(t('ewf.all.loaded', { name: t(`ewf.preset.${id}.name`) }));
+        };
+        const sortBy = (th) => {
+            const k = th.dataset.sort, cur = S.sort || {};
+            S.sort = { key: k, dir: cur.key === k ? -cur.dir : 1 };
+            allTab($('#ewf-pane'));
+        };
+        content.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const th = e.target.closest('th[data-sort]'), tr = e.target.closest('tr[data-preset]');
+            if (th) { e.preventDefault(); sortBy(th); } else if (tr) { e.preventDefault(); loadPreset(tr); }
+        });
         content.addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (th) { sortBy(th); return; }
+            const tr = e.target.closest('tr[data-preset]');
+            if (tr) { loadPreset(tr); return; }
             const tb = e.target.closest('#ewf-tabs .tab');
             if (tb) { setTab(tb.dataset.tab); return; }
             const why = e.target.closest('[data-why]');
@@ -555,6 +589,151 @@
     }
 
     // =====================================================================
+    // Weer van nu (Open-Meteo, KNMI HARMONIE-AROME)
+    // =====================================================================
+    function stationOf(st) { return W.STATIONS[st.options.station] ? st.options.station : 'debilt'; }
+
+    function renderLive() {
+        const box = $('#ewf-live');
+        if (!box) return;
+        const st = ewf(), key = stationOf(st);
+        const label = key === 'debilt' ? t('ewf.weather.live') : `${t('ewf.weather.liveAt')} · ${W.STATIONS[key].name}`;
+        if (!box.firstChild) {
+            box.innerHTML = `<button type="button" class="btn primary" id="ewf-live-btn"></button>`
+                + `<select class="input" id="ewf-station" aria-label="${esc(t('ewf.weather.station'))}" title="${esc(t('ewf.weather.station'))}">`
+                + Object.entries(W.STATIONS).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join('') + `</select>`
+                + `<p class="hint ewf-attrib">${esc(t('ewf.weather.attribution'))}</p>`;
+        }
+        const btn = $('#ewf-live-btn');
+        btn.textContent = S.weatherBusy ? t('ewf.weather.loading') : label;
+        btn.classList.toggle('loading', S.weatherBusy);
+        btn.disabled = S.weatherBusy;
+        btn.setAttribute('aria-busy', String(S.weatherBusy));
+        setVal($('#ewf-station'), key);
+    }
+
+    /** Actueel weer ophalen; bij een fout blijven de vorige waarden staan (SPEC §6.2). */
+    async function fetchLive() {
+        if (S.weatherBusy) return;
+        const st = ewf(), sta = W.STATIONS[stationOf(st)];
+        S.weatherBusy = true;
+        renderLive();
+        try {
+            const w = await W.fetchCurrent({ lat: sta.lat, lon: sta.lon, surfAz: st.building.chimAz });
+            const keep = ['t', 'rh', 'p', 'U10', 'dir', 'ghi', 'dni', 'dhi', 'gti', 'gtiAz', 'time', 'lat', 'lon'];
+            const values = { facadeManual: false, facade: 0 };
+            for (const k of keep) values[k] = w[k];
+            app.change((pj) => { pj.ewf.weather = { source: 'live', presetId: pj.ewf.weather.presetId, values, fetchedAt: w.fetchedAt }; });
+            app.toast(t(w.cached ? 'ewf.weather.cached' : 'ewf.weather.ok', { t: fmt(w.t, 1), rh: fmt(w.rh, 0), u: fmt(w.U10, 1) }));
+        } catch (e) {
+            app.toast(t(e && e.code === 'offline' ? 'ewf.weather.offline' : 'ewf.weather.fail'), true);
+        } finally {
+            S.weatherBusy = false;
+            renderLive();
+            updatePanels();
+        }
+    }
+
+    // =====================================================================
+    // Alle weersituaties (SPEC §8.7) — in stukjes berekend, zodat de hoofdthread vrij blijft
+    // =====================================================================
+    const ALL_COLS = [
+        ['name', '', null], ['mode', '', null], ['rwl', '–', 2], ['tCascadeOut', '°C', 1], ['rhCascadeOut', '%', 0],
+        ['Qcascade', 'kW', 0, 1e-3], ['Qreheat', 'kW', 0, 1e-3], ['rhRoom', '%', 0], ['phiFacade', 'W/m²', 0],
+        ['tChimneyOut', '°C', 1], ['Qchimney', 'kW', 0, 1e-3], ['dpChimney', 'Pa', 1], ['pOver', 'Pa', 1], ['pEj', 'Pa', 1],
+        ['minSupply', 'Pa', 1], ['minExhaust', 'Pa', 1], ['Pfan', 'kW', 2, 1e-3], ['Ppump', 'kW', 2, 1e-3], ['COP', '–', 0], ['warn', '', null]
+    ];
+
+    function ensureAll(onDone) {
+        const st = ewf();
+        const key = JSON.stringify(st.building);
+        if (S.allKey === key && S.all) return true;
+        if (S.allPending === key) return false;
+        S.allPending = key;
+        const job = ++S.allJob;
+        const rows = [];
+        let i = 0;
+        const step = () => {
+            if (job !== S.allJob) return;
+            const t0 = performance.now();
+            // ≈ 1–3 presets per tik, ruim binnen 50 ms
+            while (i < M.PRESETS.length && performance.now() - t0 < 25) {
+                const pr = M.PRESETS[i++];
+                rows.push(M.summarize(pr.id, M.simulate(st.building, M.presetWeather(pr))));
+            }
+            if (onDone) onDone(i);
+            if (i < M.PRESETS.length) { setTimeout(step, 0); return; }
+            S.all = rows; S.allKey = key; S.allPending = null;
+            if (onDone) onDone(i);
+        };
+        setTimeout(step, 0);
+        return false;
+    }
+
+    function allTab(pane) {
+        const ready = ensureAll((n) => {
+            if (app.prefs().ewf.tab !== 'all') return;
+            if (S.all && S.allKey === JSON.stringify(ewf().building)) allTab($('#ewf-pane'));
+            else { const pr = $('#ewf-all-progress'); if (pr) pr.textContent = t('ewf.all.progress', { n, m: M.PRESETS.length }); }
+        });
+        if (!ready) {
+            pane.innerHTML = `<p class="hint" id="ewf-all-progress">${esc(t('ewf.all.progress', { n: 0, m: M.PRESETS.length }))}</p>`;
+            return;
+        }
+        const st = ewf(), cur = st.weather.source === 'preset' ? st.weather.presetId : null;
+        const rows = S.all.slice();
+        const sort = S.sort || { key: null, dir: 1 };
+        const val = (r, k) => (k === 'name' ? t(`ewf.preset.${r.id}.name`) : k === 'warn' ? r.warnings.length : k === 'mode' ? r.mode : r[k]);
+        if (sort.key) {
+            rows.sort((a, b) => {
+                const x = val(a, sort.key), y = val(b, sort.key);
+                if (x == null) return 1;
+                if (y == null) return -1;
+                return (typeof x === 'string' ? x.localeCompare(y) : x - y) * sort.dir;
+            });
+        }
+        const head = ALL_COLS.map(([k, u]) => {
+            const aria = sort.key === k ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none';
+            return `<th class="${k === 'name' || k === 'mode' ? 'l ' : ''}sortable" data-sort="${k}" aria-sort="${aria}" tabindex="0">${esc(t('ewf.all.c.' + k))}${u ? `<span class="u">${esc(u)}</span>` : ''}</th>`;
+        }).join('');
+        const cell = (r, [k, , d, sc]) => {
+            if (k === 'name') return `<td class="l"><b>${esc(t(`ewf.preset.${r.id}.name`))}</b></td>`;
+            if (k === 'mode') return `<td class="l"><span class="ewf-mode-tag ${r.mode}">${esc(t('ewf.mode.' + r.mode))}</span></td>`;
+            if (k === 'warn') {
+                if (!r.warnings.length) return '<td></td>';
+                const tip = r.warnings.map((w) => t('ewf.warn.' + w.code, warnVars(w))).join('\n');
+                const lvl = r.warnings.some((w) => w.level === 'error') ? 'error' : 'warn';
+                return `<td class="l"><span class="ewf-warn-ico ${lvl}" title="${esc(tip)}">▲ ${r.warnings.length}</span></td>`;
+            }
+            const v = r[k];
+            if (v == null || !isFinite(v)) return '<td>—</td>';
+            const x = v * (sc || 1);
+            let cls = '';
+            if (k === 'minSupply' || k === 'minExhaust') cls = x >= 0 ? 'ok' : 'bad';
+            if (k === 'tChimneyOut' && !r.chimneyOpen) return `<td class="muted" title="${esc(t('ewf.kpi.closed'))}">${fmt(x, d)}*</td>`;
+            return `<td class="${cls}">${fmt(x, d)}</td>`;
+        };
+        const body = rows.map((r) => `<tr data-preset="${r.id}" class="${r.id === cur ? 'selected' : ''}" tabindex="0" title="${esc(t('ewf.all.load'))}">${ALL_COLS.map((c) => cell(r, c)).join('')}</tr>`).join('');
+        pane.innerHTML = `<p class="hint">${esc(t('ewf.all.intro'))}</p>`
+            + `<div class="table-wrap"><table class="data-table ewf-table ewf-all"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
+            + `<p class="hint">${esc(t('ewf.all.note'))}</p>`;
+    }
+
+    function allCSV(rows) {
+        const out = [ALL_COLS.map(([k, u]) => (k === 'warn' ? t('ewf.warnHead') : `${t('ewf.all.c.' + k)}${u ? ` [${u}]` : ''}`))];
+        for (const r of rows) {
+            out.push(ALL_COLS.map(([k, , d, sc]) => {
+                if (k === 'name') return t(`ewf.preset.${r.id}.name`);
+                if (k === 'mode') return t('ewf.mode.' + r.mode);
+                if (k === 'warn') return r.warnings.map((w) => t('ewf.warn.' + w.code, warnVars(w))).join(' | ');
+                const v = r[k];
+                return v == null || !isFinite(v) ? '' : Math.round(v * (sc || 1) * 10 ** d) / 10 ** d;
+            }));
+        }
+        return out;
+    }
+
+    // =====================================================================
     // Export
     // =====================================================================
     function exportCSV() {
@@ -595,6 +774,7 @@
         init, sync, show, renderAll, restyle, exportCSV, exportSVG, exportPNG, openPanel, setTab,
         get state() { return S; },
         get app() { return app; },
-        compute, renderResults, updatePanels, th, signed, tabs: {}
+        compute, renderResults, updatePanels, th, signed, renderLive, fetchLive, allCSV,
+        tabs: { all: (pane) => allTab(pane) }
     };
 })(typeof self !== 'undefined' ? self : this);

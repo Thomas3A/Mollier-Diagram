@@ -416,6 +416,17 @@
                 lFiwi: 'FiWiHEx', lDyn: 'Uitstroomverlies', sumExh: 'Marge afvoer',
                 hint: 'Toevoer = p_over + Δp_hydr + Δp_th,kc − schachtkolom − verliezen; afvoer = Δp_th,zs + shuntkolom − p_ej − verliezen. Positief = smoren, negatief = hulpventilator.'
             },
+            all: {
+                intro: 'Alle weersituaties doorgerekend op het huidige gebouw. Klik op een kolomkop om te sorteren en op een rij om die weersituatie te laden.',
+                note: 'Q in kW (+ verwarmen, − koelen); marges = kleinste over alle verdiepingen (+ smoren, − hulpventilator); P_pomp = sproei- + bronpomp; * = zonneschoorsteen dicht (kantelpunt).',
+                progress: 'Berekenen… {n}/{m}', load: 'Klik om deze weersituatie te laden', loaded: 'Weersituatie geladen: {name}',
+                c: {
+                    name: 'Weersituatie', mode: 'Modus', rwl: 'RW/L', tCascadeOut: 't uit cascade', rhCascadeOut: 'RV uit', Qcascade: 'Q cascade',
+                    Qreheat: 'Q naverw.', rhRoom: 'RV ruimte', phiFacade: 'Φ gevel', tChimneyOut: 't_zs', Qchimney: 'Q_zs', dpChimney: 'trek zs',
+                    pOver: 'p_over', pEj: 'p_ej', minSupply: 'min. marge toevoer', minExhaust: 'min. marge afvoer', Pfan: 'P_vent', Ppump: 'P_pomp',
+                    COP: 'COP', warn: '⚠'
+                }
+            },
             // ewf:nl-end
         },
         units: { kPa: 'kPa', m: 'm' }
@@ -831,6 +842,17 @@
                 pEj: 'Ejector suction (−p_ej)', lExt: 'Grilles / transfer', lShunt: 'Shunt friction', lU: 'U-bend', lChim: 'Chimney friction',
                 lFiwi: 'FiWiHEx', lDyn: 'Exit loss', sumExh: 'Exhaust margin',
                 hint: 'Supply = p_over + Δp_hydr + Δp_th,cc − shaft column − losses; exhaust = Δp_th,sc + shunt column − p_ej − losses. Positive = throttle, negative = auxiliary fan.'
+            },
+            all: {
+                intro: 'All weather cases calculated for the current building. Click a column header to sort and a row to load that weather case.',
+                note: 'Q in kW (+ heating, − cooling); margins = smallest over all floors (+ throttle, − auxiliary fan); P_pump = spray + source pump; * = solar chimney closed (tipping point).',
+                progress: 'Calculating… {n}/{m}', load: 'Click to load this weather case', loaded: 'Weather case loaded: {name}',
+                c: {
+                    name: 'Weather case', mode: 'Mode', rwl: 'RW/L', tCascadeOut: 't cascade out', rhCascadeOut: 'RH out', Qcascade: 'Q cascade',
+                    Qreheat: 'Q reheat', rhRoom: 'Room RH', phiFacade: 'Φ facade', tChimneyOut: 't_sc', Qchimney: 'Q_sc', dpChimney: 'draught sc',
+                    pOver: 'p_over', pEj: 'p_ej', minSupply: 'min. supply margin', minExhaust: 'min. exhaust margin', Pfan: 'P_fan', Ppump: 'P_pump',
+                    COP: 'COP', warn: '⚠'
+                }
             },
             // ewf:en-end
         },

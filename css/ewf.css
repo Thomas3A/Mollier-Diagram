@@ -88,6 +88,7 @@
 .ewf-warn li.warn .ico { background: var(--warn); }
 .ewf-warn li.error .ico { background: var(--danger); }
 .ewf-warn li.error { color: var(--danger); }
+.ewf-wsrc { margin-top: 6px; font-size: 11.5px; }
 .ewf-why { border: 0; background: none; padding: 0; font-size: 11.5px; color: var(--accent-2); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
 
 /* ---------- Tabbladen ---------- */
@@ -193,6 +194,21 @@
 .ewf-bu tr.grp td { font-weight: 700; color: var(--text); background: var(--surface-2); text-align: left; }
 .ewf-bu tr.sum td { font-weight: 700; border-top: 1.5px solid var(--border-strong); }
 .ewf-energy-charts .ewf-chart + .ewf-chart-head { margin-top: 14px; }
+
+/* ---------- Weer en alle weersituaties ---------- */
+.ewf-attrib { flex: 1 1 100%; font-size: 11px; }
+.ewf-all th.sortable { cursor: pointer; user-select: none; }
+.ewf-all th.sortable:hover { color: var(--text); }
+.ewf-all th[aria-sort="ascending"]::after { content: ' ▲'; font-size: 9px; }
+.ewf-all th[aria-sort="descending"]::after { content: ' ▼'; font-size: 9px; }
+.ewf-all tbody tr { cursor: pointer; }
+.ewf-all tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ewf-all td.muted { color: var(--muted); }
+.ewf-mode-tag { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); }
+.ewf-mode-tag.cool { color: var(--cool); background: color-mix(in srgb, var(--cool) 12%, transparent); }
+.ewf-mode-tag.heat { color: var(--heat); background: color-mix(in srgb, var(--heat) 12%, transparent); }
+.ewf-warn-ico { font-size: 11px; font-weight: 700; color: var(--warn); cursor: help; }
+.ewf-warn-ico.error { color: var(--danger); }
 
 /* Alleen bij afdrukken: tabel per verdieping */
 .ewf-print-floors { display: none; }
