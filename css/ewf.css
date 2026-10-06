@@ -1,0 +1,124 @@
+/* =========================================================================
+   Earth, Wind & Fire — stijl. Gebruikt de tokens uit app.css; werkt in licht,
+   donker ([data-theme] én prefers-color-scheme) en de verborgen huisstijl.
+   ========================================================================= */
+:root {
+    --warn: #b45309;
+    --warn-soft: #fef3e2;
+    --info: #2563eb;
+    --ok: #047857;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --warn: #fbbf24; --warn-soft: rgba(251, 191, 36, .12); --info: #60a5fa; --ok: #34d399; }
+}
+:root[data-theme="dark"] { --warn: #fbbf24; --warn-soft: rgba(251, 191, 36, .12); --info: #60a5fa; --ok: #34d399; }
+:root[data-brand="ikea"] { --warn: #c25e00; --warn-soft: #fff1e0; --info: #0058a3; --ok: #0a8a00; }
+@media (prefers-color-scheme: dark) {
+    :root[data-brand="ikea"]:not([data-theme="light"]) { --warn: #ffdb00; --warn-soft: rgba(255, 219, 0, .14); --info: #9fd0ff; --ok: #7fd47a; }
+}
+:root[data-brand="ikea"][data-theme="dark"] { --warn: #ffdb00; --warn-soft: rgba(255, 219, 0, .14); --info: #9fd0ff; --ok: #7fd47a; }
+
+/* ---------- Weergaveschakelaar ---------- */
+.view-switch button[data-view="ewf"][aria-selected="true"] { color: var(--heat); }
+:root[data-brand="ikea"] .view-switch button[data-view="ewf"][aria-selected="true"] { color: var(--on-select); }
+
+/* ---------- Zijbalk ---------- */
+.ewf-side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px; }
+.ewf-mode { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); }
+.ewf-mode.cool { background: color-mix(in srgb, var(--cool) 14%, transparent); color: var(--cool); }
+.ewf-mode.heat { background: color-mix(in srgb, var(--heat) 14%, transparent); color: var(--heat); }
+.ewf-panel { gap: 0; padding: 0; }
+.ewf-panel > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px; border-radius: var(--radius); user-select: none;
+}
+.ewf-panel > summary::-webkit-details-marker { display: none; }
+.ewf-panel > summary::after {
+    content: ''; width: 7px; height: 7px; margin-left: 2px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg); transition: transform .15s; flex-shrink: 0;
+}
+.ewf-panel[open] > summary::after { transform: rotate(45deg); }
+.ewf-panel > summary h2 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .01em; text-transform: uppercase; color: var(--text-2); }
+.ewf-panel > summary:hover h2 { color: var(--text); }
+.ewf-sum { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ewf-panel-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.ewf-fields { align-items: end; }
+.ewf-fields .fld-lbl { white-space: normal; line-height: 1.25; }
+.ewf-panel .fld.chk { flex-direction: row; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
+.ewf-panel .fld.chk input { margin: 2px 0 0; accent-color: var(--accent); }
+.ewf-panel-foot { display: flex; justify-content: flex-end; }
+.ewf-hint:empty, .ewf-stamp:empty { display: none; }
+.ewf-stamp { font-style: italic; }
+.badge-assume {
+    display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; font-size: 10px; font-weight: 700;
+    color: var(--warn); background: var(--warn-soft); vertical-align: 1px; letter-spacing: .01em; text-transform: lowercase;
+}
+.input.out { border-color: var(--warn); box-shadow: 0 0 0 2px var(--warn-soft); }
+.ewf-src { display: flex; }
+.ewf-src button { flex: 1; }
+.ewf-preset-info { line-height: 1.4; }
+.ewf-live:empty { display: none; }
+.ewf-live { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ewf-live .btn { flex: 1 1 auto; }
+.ewf-live select { flex: 0 1 150px; height: 34px; }
+.btn.loading { opacity: .7; cursor: progress; }
+
+/* ---------- KPI's en meldingen ---------- */
+.ewf-kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ewf-kpi { position: relative; }
+.ewf-kpi.alert .kpi-val { color: var(--danger); }
+.ewf-kpi.warn .kpi-val { color: var(--warn); }
+.ewf-kpi-status {
+    display: inline-block; margin-top: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ewf-kpi-status.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.ewf-kpi-status.bad { color: var(--danger); background: var(--danger-soft); }
+.ewf-kpi-status.warn { color: var(--warn); background: var(--warn-soft); }
+.ewf-kpi-status.info { color: var(--text-2); background: var(--surface-3); }
+.ewf-kpi-status.mode.cool { color: var(--cool); background: color-mix(in srgb, var(--cool) 12%, transparent); }
+.ewf-kpi-status.mode.heat { color: var(--heat); background: color-mix(in srgb, var(--heat) 12%, transparent); }
+.ewf-kpi-status.mode.off { color: var(--text-2); background: var(--surface-3); }
+
+.ewf-warn-card { padding: 10px 14px; }
+.ewf-warn-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
+.ewf-warn { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ewf-warn li { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; line-height: 1.4; color: var(--text-2); }
+.ewf-warn .ico { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--info); transform: translateY(-1px); }
+.ewf-warn li.warn .ico { background: var(--warn); }
+.ewf-warn li.error .ico { background: var(--danger); }
+.ewf-warn li.error { color: var(--danger); }
+.ewf-why { border: 0; background: none; padding: 0; font-size: 11.5px; color: var(--accent-2); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+
+/* ---------- Tabbladen ---------- */
+.ewf-tabs { overflow-x: auto; scrollbar-width: thin; flex: 1 1 auto; min-width: 0; }
+.ewf-tabs .tab { white-space: nowrap; }
+.ewf-pane { padding: 12px 14px 14px; min-height: 200px; }
+.ewf-pane .table-wrap { max-height: 520px; overflow: auto; }
+.ewf-table .ok { color: var(--ok); font-weight: 600; }
+.ewf-table .bad { color: var(--danger); font-weight: 600; }
+.ewf-energy { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); gap: 16px; align-items: start; }
+.ewf-energy tr.ref td { color: var(--muted); font-style: italic; }
+.ewf-chart { position: relative; width: 100%; min-height: 260px; }
+.ewf-chart:empty { display: none; }
+
+/* ---------- Responsief ---------- */
+@media (max-width: 1600px) { .ewf-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1080px) { .ewf-energy { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+    .ewf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); order: 0; }
+    .ewf-content > .results { order: 0; }
+    .ewf-layout .content { order: -1; }
+    .ewf-pane { padding: 10px; }
+    .view-switch button { padding: 5px 8px; }
+}
+
+/* ---------- Afdrukken ---------- */
+@media print {
+    :root[data-view="ewf"] .ewf-sidebar, :root[data-view="ewf"] .ewf-warn-card .ewf-why, :root[data-view="ewf"] .ewf-tabs-card .results-head { display: none !important; }
+    :root[data-view="ewf"] .ewf-layout { display: block; padding: 0; }
+    :root[data-view="ewf"] .ewf-kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    :root[data-view="ewf"] .ewf-kpi { padding: 6px; }
+    :root[data-view="ewf"] .ewf-kpi .kpi-val { font-size: 15px; }
+    :root[data-view="ewf"] .ewf-pane .table-wrap { max-height: none; overflow: visible; }
+}

@@ -193,3 +193,24 @@ test('presets: tijd, zonnestand en vaste gevelstraling', () => {
     near(r.rad.sun.az, 0, 0.1, 'zon in het zuiden');
     assert.equal(r.rad.method, 'manual');
 });
+
+test('projecttoestand: standaard, normalisatie en oude projecten', () => {
+    const d = M.defaultState();
+    assert.equal(d.weather.presetId, 'ontwerp_zomer');
+    assert.deepEqual(M.normalizeState(undefined), d);
+    assert.deepEqual(M.normalizeState(JSON.parse(JSON.stringify(d))), d, 'round-trip via JSON');
+    const n = M.normalizeState({ building: { floors: 12, hacker: '<script>', chimB: 'x' }, weather: { source: 'evil', presetId: 'nope' }, options: { station: 5 } });
+    assert.equal(n.building.floors, 12);
+    assert.equal(n.building.chimB, 11.5);
+    assert.equal(n.building.hacker, undefined);
+    assert.equal(n.weather.source, 'preset');
+    assert.equal(n.weather.presetId, 'ontwerp_zomer');
+    const live = M.normalizeState({ weather: { source: 'manual', values: { t: 3, rh: 70, U10: 6, ghi: 120, time: '2026-01-10T11:00:00Z' } } });
+    assert.equal(live.weather.values.t, 3);
+    assert.equal(M.weatherOf(live).U10, 6);
+    assert.equal(M.weatherOf(d).facade, 400, 'preset uit de catalogus');
+    assert.equal(M.beaufort(0.1), 0);
+    assert.equal(M.beaufort(3.5), 3);
+    assert.equal(M.beaufort(13), 6);
+    assert.equal(M.beaufort(40), 12);
+});

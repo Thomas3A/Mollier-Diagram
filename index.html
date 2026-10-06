@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="css/ewf.css">
     <script>
         // Thema en huisstijl vóór de eerste render zetten (geen flits)
         try {
@@ -66,6 +67,10 @@
         </div>
         <input id="project-name" class="project-name" spellcheck="false" data-i18n-aria="tb.projectName">
         <nav class="toolbar">
+            <div class="seg view-switch" id="view-switch" role="tablist" data-i18n-aria="view.label">
+                <button type="button" role="tab" data-view="mollier" data-i18n="view.mollier">Mollier-diagram</button>
+                <button type="button" role="tab" data-view="ewf" data-i18n="view.ewf">Earth, Wind &amp; Fire</button>
+            </div>
             <div class="seg" id="chart-type" role="tablist">
                 <button type="button" data-type="mollier" data-i18n="chartType.mollier">Mollier h,x</button>
                 <button type="button" data-type="psychro" data-i18n="chartType.psychro">Psychrometrisch</button>
@@ -95,7 +100,7 @@
         </nav>
     </header>
 
-    <main class="layout">
+    <main class="layout" id="view-mollier">
         <aside class="sidebar">
             <!-- Scenario's -->
             <section class="panel">
@@ -222,6 +227,12 @@
         </section>
     </main>
 
+    <!-- Earth, Wind & Fire (js/ewf/view.js bouwt de inhoud) -->
+    <main class="layout ewf-layout" id="view-ewf" hidden>
+        <aside class="sidebar ewf-sidebar" id="ewf-sidebar"></aside>
+        <section class="content ewf-content" id="ewf-content"></section>
+    </main>
+
     <footer class="footer"><span data-i18n="app.footer"></span> · <button type="button" class="egg" id="version" aria-pressed="false">v4.0</button></footer>
 
     <div class="toasts" id="toasts" aria-live="polite"></div>
@@ -236,6 +247,8 @@
             <ul><li data-i18n="help.k1"></li><li data-i18n="help.k2"></li><li data-i18n="help.k3"></li><li data-i18n="help.k4"></li><li data-i18n="help.k5"></li></ul>
             <h3 data-i18n="help.method"></h3>
             <ul><li data-i18n="help.me1"></li><li data-i18n="help.me2"></li><li data-i18n="help.me3"></li></ul>
+            <h3 data-i18n="help.ewf"></h3>
+            <ul><li data-i18n="help.ewf1"></li><li data-i18n="help.ewf2"></li><li data-i18n="help.ewf3"></li><li data-i18n="help.ewf4"></li><li data-i18n="help.ewf5"></li></ul>
         </div>
     </dialog>
 
@@ -246,6 +259,13 @@
     <script src="js/processes.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/chart.js"></script>
+    <script src="js/ewf/physics.js"></script>
+    <script src="js/ewf/solar.js"></script>
+    <script src="js/ewf/model.js"></script>
+    <script src="js/ewf/weather.js"></script>
+    <script src="js/ewf/schematic.js"></script>
+    <script src="js/ewf/charts.js"></script>
+    <script src="js/ewf/view.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

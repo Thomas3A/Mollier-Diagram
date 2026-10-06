@@ -8,7 +8,7 @@
 (function () {
     'use strict';
 
-    const P = window.Psychro, PR = window.Processes, I = window.I18N;
+    const P = window.Psychro, PR = window.Processes, I = window.I18N, EM = window.EwfModel;
     const { t, fmt, fmtAuto: fmtA, parseNum } = I;
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -36,8 +36,10 @@
         winter: { tMin: -25, tMax: 30, xMax: 15 },
         hot: { tMin: 0, tMax: 90, xMax: 80 }
     };
+    const VIEWS = ['mollier', 'ewf'];
     const DEFAULT_PREFS = {
-        lang: 'nl', theme: 'auto', brand: 'default', chart: 'mollier', tab: 'states',
+        lang: 'nl', theme: 'auto', brand: 'default', chart: 'mollier', tab: 'states', view: 'mollier',
+        ewf: { tab: 'profile', anim: true, panels: ['weather', 'building'] },
         layers: { iso: true, rh: true, h: true, wb: false, rho: false, fog: true, comfort: true, edge: false, pw: true, values: false },
         range: Object.assign({}, RANGE_PRESETS.standard),
         comfort: { tMin: 20, tMax: 26, rhMin: 30, rhMax: 70, xMax: 11.5 }
@@ -87,12 +89,12 @@
             makeStep('heat', { mode: 'toT', value: 16 }),
             makeStep('fan', { dp: 600, eff: 65 })
         ]);
-        return { version: 4, name: t('example.name'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: w.id, scenarios: [w, z] };
+        return { version: 4, name: t('example.name'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: w.id, scenarios: [w, z], ewf: EM.defaultState() };
     }
 
     function emptyProject() {
         const sc = makeScenario(t('scn.newName', { n: 1 }), 0, { pair: 't-rh', a: 20, b: 50 }, { mode: 'volume', value: 1000 });
-        return { version: 4, name: t('example.newName'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: sc.id, scenarios: [sc] };
+        return { version: 4, name: t('example.newName'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: sc.id, scenarios: [sc], ewf: EM.defaultState() };
     }
 
     /** Alleen eindige getallen en korte strings uit onbekende invoer overnemen. */
@@ -123,7 +125,8 @@
                 kpa: isFinite(pr.kpa) ? +pr.kpa : 101.325
             },
             active: String(pj.active || ''),
-            scenarios: []
+            scenarios: [],
+            ewf: EM.normalizeState(pj.ewf)          // Earth, Wind & Fire; oude projecten krijgen de standaard
         };
         const ids = new Set();
         for (const s of pj.scenarios.slice(0, 12)) {
@@ -144,7 +147,7 @@
             });
             out.scenarios.push({ id, name: String(s.name || '—').slice(0, 40), color: Math.abs(parseInt(s.color, 10) || 0) % 6, visible: s.visible !== false, start, flow, steps });
         }
-        if (!out.scenarios.length) return emptyProject();
+        if (!out.scenarios.length) return Object.assign(emptyProject(), { ewf: out.ewf });
         if (!out.scenarios.some((s) => s.id === out.active)) out.active = out.scenarios[0].id;
         return out;
     }
@@ -183,7 +186,7 @@
         const alt = isFinite(old.altitude) ? +old.altitude : isFinite(settings.altitude) ? +settings.altitude : 0;
         const flow = isFinite(old.airflow) ? +old.airflow : isFinite(settings.airflow) ? +settings.airflow : 1000;
         const sc = makeScenario(t('scn.newName', { n: 1 }), 0, start, { mode: 'volume', value: flow }, steps);
-        return { version: 4, name: t('example.newName'), pressure: { mode: 'altitude', altitude: alt, kpa: 101.325 }, active: sc.id, scenarios: [sc] };
+        return { version: 4, name: t('example.newName'), pressure: { mode: 'altitude', altitude: alt, kpa: 101.325 }, active: sc.id, scenarios: [sc], ewf: EM.defaultState() };
     }
 
     const activeScn = () => project.scenarios.find((s) => s.id === project.active) || project.scenarios[0];
@@ -273,6 +276,8 @@
             brand: p.brand === 'ikea' ? 'ikea' : 'default',
             chart: p.chart === 'psychro' ? 'psychro' : 'mollier',
             tab: p.tab === 'steps' ? 'steps' : 'states',
+            view: VIEWS.includes(p.view) ? p.view : 'mollier',
+            ewf: Object.assign({}, DEFAULT_PREFS.ewf, p.ewf && typeof p.ewf === 'object' ? p.ewf : {}),
             layers: Object.assign({}, DEFAULT_PREFS.layers, p.layers || {}),
             range: validRange(p.range) ? p.range : Object.assign({}, DEFAULT_PREFS.range),
             comfort: Object.assign({}, DEFAULT_PREFS.comfort, p.comfort || {})
@@ -393,6 +398,8 @@
 
     function renderAll() {
         applyI18n();
+        renderViewChrome();
+        if (window.EwfView) window.EwfView.renderAll();
         renderScenarioPanel();
         renderStartPanel(true);
         renderSystem(true);
@@ -413,6 +420,7 @@
         updateChart();
         updateUndoButtons();
         document.title = `${project.name} · ${t('app.title')}`;
+        if (window.EwfView) window.EwfView.sync();
     }
 
     function setVal(el, v) { if (document.activeElement !== el) el.value = v; }
@@ -1028,7 +1036,7 @@
     async function share() {
         commit();
         const code = await encodeShare(project);
-        const url = `${location.origin}${location.pathname}#p=${code}`;
+        const url = `${location.origin}${location.pathname}${isEwf() ? '?view=ewf' : ''}#p=${code}`;
         try {
             await navigator.clipboard.writeText(url);
             toast(t('toast.linkCopied'));
@@ -1045,6 +1053,78 @@
         } catch (e) { toast(t('toast.openFail'), true); }
         history.replaceState(null, '', location.pathname + location.search);
     }
+
+    // =====================================================================
+    // Weergaven: Mollier-diagram | Earth, Wind & Fire
+    // =====================================================================
+    const isEwf = () => prefs.view === 'ewf';
+    function renderViewChrome() {
+        const ewf = isEwf();
+        $$('#view-switch button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === prefs.view)));
+        $('#view-mollier').hidden = ewf;
+        $('#view-ewf').hidden = !ewf;
+        $('#chart-type').hidden = ewf;
+        document.documentElement.setAttribute('data-view', prefs.view);
+    }
+    /** Wissel van weergave; de keuze staat in prefs.view én in de URL (?view=ewf), het #p=-formaat blijft onaangetast. */
+    function setView(view, push = true) {
+        if (!VIEWS.includes(view) || view === prefs.view) return;
+        commit();
+        prefs.view = view;
+        savePrefs();
+        if (push) {
+            const q = new URLSearchParams(location.search);
+            if (view === 'ewf') q.set('view', 'ewf'); else q.delete('view');
+            const qs = q.toString();
+            history.pushState({ view }, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+        }
+        closeMenus();
+        renderViewChrome();
+        if (view === 'mollier') { configureChart(); updateChart(); }
+        if (window.EwfView) window.EwfView.show(view === 'ewf');
+    }
+    function viewFromURL() {
+        const v = new URLSearchParams(location.search).get('view');
+        return v === 'ewf' ? 'ewf' : v === 'mollier' ? 'mollier' : null;
+    }
+
+    /** Scenario aanmaken of bijwerken op naam (voor "Open in Mollier-diagram"). Via change(), dus ongedaan te maken. */
+    function upsertScenario(name, start, flow, steps) {
+        change((pj) => {
+            let sc = pj.scenarios.find((s) => s.name === name);
+            const mk = steps.map((st) => makeStep(st.type, st.params, st.label));
+            if (sc) { sc.start = start; sc.flow = flow; sc.steps = mk; sc.visible = true; }
+            else {
+                if (pj.scenarios.length >= 12) pj.scenarios.shift();
+                const used = new Set(pj.scenarios.map((x) => x.color));
+                sc = makeScenario(name.slice(0, 40), [0, 1, 2, 3, 4, 5].find((c) => !used.has(c)) ?? pj.scenarios.length % 6, start, flow, mk);
+                pj.scenarios.push(sc);
+            }
+            pj.active = sc.id;
+        });
+        if (ui.form.editingId) resetForm();
+        renderAll();
+    }
+
+    /** Klein publiek koppelvlak voor de EWF-weergave (js/ewf/view.js). */
+    window.MollierApp = {
+        t: (k, v) => t(k, v), fmt: (v, d) => fmt(v, d), fmtA: (v, d) => fmtA(v, d), parseNum: (s) => parseNum(s), esc,
+        get lang() { return I.lang; },
+        getProject: () => project,
+        change, commit, toast, download, slug: () => slug(),
+        prefs: () => prefs, savePrefs: () => savePrefs(),
+        skin: () => skin(), theme: () => themeResolved(),
+        isView: (v) => prefs.view === v, setView,
+        upsertScenario,
+        csv: (rows, name) => {
+            const nl = I.lang === 'nl', sep = nl ? ';' : ',';
+            const q = (v) => {
+                let c = typeof v === 'number' ? (isFinite(v) ? (nl ? String(v).replace('.', ',') : String(v)) : '') : String(v == null ? '' : v);
+                return /[";,\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c;
+            };
+            download(new Blob(['\ufeff' + rows.map((r) => r.map(q).join(sep)).join('\r\n')], { type: 'text/csv;charset=utf-8' }), name);
+        }
+    };
 
     // ---- Toasts & menu's ----
     function toast(msg, error = false, html = false, ms = 3200) {
@@ -1100,6 +1180,11 @@
             savePrefs();
             configureChart();
         });
+        $('#view-switch').addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-view]');
+            if (b) setView(b.dataset.view);
+        });
+        window.addEventListener('popstate', () => setView(viewFromURL() || 'mollier', false));
         $('#btn-undo').addEventListener('click', undo);
         $('#btn-redo').addEventListener('click', redo);
         $('#btn-file').addEventListener('click', (e) => { e.stopPropagation(); toggleMenu($('#menu-file')); });
@@ -1111,7 +1196,10 @@
                 new: () => { if (confirm(t('confirm.newProject'))) replaceProject(emptyProject(), t('toast.newProject')); },
                 example: () => replaceProject(exampleProject(), t('toast.example')),
                 open: () => $('#file-input').click(),
-                save: exportJSON, png: exportPNG, svg: exportSVG, csv: exportCSV,
+                save: exportJSON,
+                png: () => (isEwf() ? window.EwfView.exportPNG() : exportPNG()),
+                svg: () => (isEwf() ? window.EwfView.exportSVG() : exportSVG()),
+                csv: () => (isEwf() ? window.EwfView.exportCSV() : exportCSV()),
                 print: () => window.print()
             })[a.dataset.action]();
         });
@@ -1130,6 +1218,7 @@
             renderScenarioPanel();
             configureChart();
             render();
+            if (window.EwfView) window.EwfView.restyle();
         };
         $('#btn-theme').addEventListener('click', () => {
             prefs.theme = themeResolved() === 'dark' ? 'light' : 'dark';
@@ -1147,6 +1236,7 @@
                 renderScenarioPanel();
                 configureChart();
                 render();
+                if (window.EwfView) window.EwfView.restyle();
             });
         }
         $('#btn-help').addEventListener('click', () => $('#dlg-help').showModal());
@@ -1358,18 +1448,21 @@
             if (mod && !e.altKey && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); redo(); return; }
             if (e.key === 'Escape') {
                 closeMenus();
+                if (isEwf()) return;
                 if (ui.form.editingId) { resetForm(); renderForm(); renderSteps(); }
                 ui.selected = null;
                 updateChart();
                 return;
             }
             if (typing || mod || e.altKey) return;
+            if (e.key === 'e' || e.key === 'E') { setView(isEwf() ? 'mollier' : 'ewf'); return; }
+            if (e.key === '?') { $('#dlg-help').showModal(); return; }
+            if (isEwf()) return;                     // diagramsneltoetsen alleen in de Mollier-weergave
             if (e.key === 'm' || e.key === 'M') { prefs.chart = prefs.chart === 'mollier' ? 'psychro' : 'mollier'; savePrefs(); configureChart(); }
             else if (e.key === '+' || e.key === '=') chart.zoomBy(1.5);
             else if (e.key === '-') chart.zoomBy(1 / 1.5);
             else if (e.key === '0') chart.resetView();
             else if (e.key === 'f' || e.key === 'F') chart.fitToData();
-            else if (e.key === '?') $('#dlg-help').showModal();
             else if (e.key === 'Delete' && ui.form.editingId) { e.preventDefault(); stepAction(ui.form.editingId, 'del'); }
         });
         window.addEventListener('hashchange', loadShareFromHash);
@@ -1381,6 +1474,8 @@
     // =====================================================================
     function init() {
         I.setLang(prefs.lang);
+        const urlView = viewFromURL();
+        if (urlView) prefs.view = urlView;
         applyTheme();
         const { pj, msg } = initialProject();
         project = pj;
@@ -1388,9 +1483,11 @@
         recompute();
         chart = new window.MollierChart($('#chart'), chartCallbacks);
         bindEvents();
+        if (window.EwfView) window.EwfView.init(window.MollierApp);
         renderAll();
         configureChart();
         chart.setData(chartData());
+        if (window.EwfView) window.EwfView.show(isEwf());
         saveLocal();
         if (msg) toast(msg);
         loadShareFromHash();

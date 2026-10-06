@@ -648,7 +648,54 @@
         return rows;
     }
 
+    // =====================================================================
+    // Projecttoestand (project.ewf, SPEC §10)
+    // =====================================================================
+    const SOURCES = ['preset', 'live', 'manual'];
+
+    /** Standaardtoestand: standaardgebouw met de weersituatie "Ontwerp zomer". */
+    function defaultState() {
+        return {
+            building: Object.assign({}, DEFAULTS),
+            weather: { source: 'preset', presetId: 'ontwerp_zomer', values: presetWeather('ontwerp_zomer'), fetchedAt: null },
+            options: { station: 'debilt' }
+        };
+    }
+
+    /** Geladen/gedeelde project.ewf valideren; ontbrekende velden krijgen de standaard. */
+    function normalizeState(e) {
+        const d = defaultState();
+        if (!e || typeof e !== 'object') return d;
+        const building = normalizeBuilding(e.building && typeof e.building === 'object' ? e.building : {});
+        const ws = e.weather && typeof e.weather === 'object' ? e.weather : {};
+        const source = SOURCES.includes(ws.source) ? ws.source : 'preset';
+        const presetId = PRESET[ws.presetId] ? ws.presetId : d.weather.presetId;
+        const values = source === 'preset' ? presetWeather(presetId) : normalizeWeather(ws.values && typeof ws.values === 'object' ? ws.values : presetWeather(presetId));
+        if (ws.values && ws.values.facadeManual === undefined && source !== 'preset') values.facadeManual = false;
+        const fetchedAt = typeof ws.fetchedAt === 'string' && isFinite(Date.parse(ws.fetchedAt)) ? ws.fetchedAt : null;
+        const op = e.options && typeof e.options === 'object' ? e.options : {};
+        return {
+            building,
+            weather: { source, presetId, values, fetchedAt },
+            options: { station: typeof op.station === 'string' && op.station.length < 20 ? op.station : 'debilt' }
+        };
+    }
+
+    /** Weerwaarden waarmee gerekend wordt: presets altijd uit de catalogus. */
+    function weatherOf(state) {
+        const ws = state.weather;
+        return ws.source === 'preset' && PRESET[ws.presetId] ? presetWeather(ws.presetId) : ws.values;
+    }
+
+    /** Beaufort-getal uit de windsnelheid op 10 m (tab. 2.1.2). */
+    function beaufort(U10) {
+        const lim = [0.3, 1.6, 3.4, 5.5, 8.0, 10.8, 13.9, 17.2, 20.8, 24.5, 28.5, 32.7];
+        const i = lim.findIndex((l) => U10 < l);
+        return i < 0 ? 12 : i;
+    }
+
     return {
+        SOURCES, defaultState, normalizeState, weatherOf, beaufort,
         LAT, LON, BBL_PER_PERSON, SFP_CONV, COP_CONV,
         SPRAY, GLASS, TERRAIN, VENT_CATS, FIELDS, FIELD, DEFAULTS, WEATHER_FIELDS, WFIELD,
         PRESETS, PRESET, SEASON_DATE, REF,
