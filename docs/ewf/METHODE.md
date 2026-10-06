@@ -139,7 +139,7 @@ Waarden zonder bron in het proefschrift; in de app gemarkeerd met de badge *aann
 | 8 | Case study §7.5.3: 200 kW koeling | Past niet bij Δh ≈ 15 kJ/kg (≈ 60 kW) | Niet gebruikt als validatie |
 | 9 | 3.5.5/3: constante 12 120 | Gaat uit van 3,5 m verdiepingshoogte en ρ0·T0 | Generieke hydrostatica; 12 120 alleen in de test |
 | 10 | Tabel 3.1.7/3: x = 13,3 g/kg | Afronding | Altijd `psychro.js` (ASHRAE) |
-| 11 | §3.5.5.4/5: winter "+16,3 Pa bovenin" (zomer "−0,3 Pa") | Reproduceerbaar als de toevoerschacht (18 °C) t.o.v. de **cascadekolom** wordt gerekend: `P_top = P_voet − g·H·(ρ_ts − ρ_kc)`. Met de neutrale-zonebenadering van SPEC §5.4 (schacht t.o.v. **buitenlucht**) volgt +30,3 Pa (U-buiseffect: koude kolom omlaag, warme omhoog). | Model volgt SPEC §5.4 (+30,3 Pa). De validatietest reproduceert 16,3 Pa met de conventie van het proefschrift en controleert daarnaast 30,3 Pa. Zie ook open punten. |
+| 11 | §3.5.5.4/5: winter "+16,3 Pa bovenin" (zomer "−0,3 Pa") | Reproduceerbaar als de toevoerschacht (18 °C) t.o.v. de **cascadekolom** wordt gerekend: `P_top = P_voet − g·H·(ρ_ts − ρ_kc)`. Met de neutrale-zonebenadering van SPEC §5.4 (schacht t.o.v. **buitenlucht**) volgt +30,3 Pa (U-buiseffect: koude kolom omlaag, warme omhoog). | Model volgt SPEC §5.4 (+30,3 Pa); **bevestigd door de opdrachtgever op 6-10-2026**. De validatie toetst +30,3 Pa; 16,3 Pa (conventie proefschrift) staat er alleen ter vergelijking bij. De verwachte waarde +16,3 Pa in SPEC §12.1 is daarmee vervangen door +30,3 Pa. |
 
 ### 4.2 Van het prototype `ewf_prototype.py`
 
@@ -220,11 +220,12 @@ tests alle uitkomsten met het orakel `test/fixtures/ewf-oracle.json` (temperatur
 
 **Thermische trek, vereenvoudiging proefschrift** (§3.5.5.4/5; 10 verd., ρ0 = 1,293, T0 = 273 K; ± 0,2 Pa)
 
-| Positie | Model [Pa] | Proefschrift [Pa] | Status |
+| Positie | Model [Pa] | Referentie [Pa] | Status |
 |---|---|---|---|
-| zomer voet | 7,49 | 7,5 | ✅ |
-| winter voet | −14,02 | −14,0 | ✅ |
-| winter top ¹ | 16,31 | 16,3 | ✅ |
+| zomer voet | 7,49 | 7,5 (proefschrift) | ✅ |
+| winter voet | −14,02 | −14,0 (proefschrift) | ✅ |
+| winter top, schacht 18 °C ¹ | 30,33 | 30,3 (SPEC §5.4) | ✅ |
+| winter top, conventie proefschrift ² | 16,31 | 16,3 (proefschrift) | ✅ |
 
 **Zonneschoorsteen** (referentie 20 °C, 400 W/m², PT-glas, B 3,6 m, D 0,65 m, w 1,5 m/s; η ∈ [0,60; 0,68], ΔT/verd ∈ [0,66; 0,80] K)
 
@@ -242,8 +243,8 @@ tests alle uitkomsten met het orakel `test/fixtures/ewf-oracle.json` (temperatur
 | idem | t_wand,max | 75,1 °C | ≈ 73 °C | ± 4 K | ✅ |
 | Testopstelling 15-12-2009 (730 W/m², 0,55 °C) | t_uit | 33,9 °C | 32,1 °C (meting) | ± 2,5 K | ✅ |
 
-¹ Conventie proefschrift: toevoerschacht (18 °C) t.o.v. de cascadekolom. Met de neutrale-zonebenadering van het
-model (schacht t.o.v. buitenlucht, SPEC §5.4) is het +30,3 Pa; zie afwijking #11.
+¹ Maatgevend (besluit opdrachtgever 6-10-2026): neutrale zone volgens SPEC §5.4, toevoerschacht t.o.v. de buitenlucht.
+² Alleen ter vergelijking: het proefschrift rekent de toevoerschacht t.o.v. de cascadekolom; zie afwijking #11.
 
 Opmerkingen bij de validatie:
 - De cascade voorspelt bij B1 (27 °C, 52 %) een 1,3 K hogere uittredetemperatuur dan gemeten en een iets lager
@@ -311,12 +312,12 @@ NEN 5060 (referentieklimaatjaren) wordt alleen genoemd: de data zijn auteursrech
 
 ## 9. Open punten
 
+Afgehandeld: **thermische trek bovenin (afwijking #11)** — de opdrachtgever heeft op 6-10-2026 bevestigd dat SPEC §5.4
+maatgevend is (+30,3 Pa bij −10 °C met een toevoerschacht van 18 °C).
+
 - **Live-weer op GitHub Pages.** Mapping, foutafhandeling, time-out en cache zijn getest met de voorbeeldrespons;
   de echte API was vanuit de bouwomgeving niet bereikbaar. Na publicatie één keer live controleren.
 
-- **Thermische trek bovenin (afwijking #11).** Het model volgt SPEC §5.4; het proefschrift lijkt de toevoerschacht
-  t.o.v. de cascadekolom te rekenen. Graag bevestigen welke referentie bedoeld is; het verschil is bij −10 °C
-  ≈ 14 Pa op de bovenste verdieping (alleen relevant voor de smoorbehoefte, niet voor de hulpventilator).
 - **Massastroom zonneschoorsteen (P3).** Overgenomen uit het prototype; een massabehoudende formulering verlaagt
   t_uit tot 0,26 K (Q gelijk). Kandidaat voor een volgende versie, samen met een nieuw orakel.
 - **Luchtvochtigheid in de schoorsteen.** De dichtheid in de schoorsteen wordt (zoals in het prototype) met x_e
