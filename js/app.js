@@ -45,7 +45,8 @@
         ewf: { tab: 'profile', anim: true, panels: ['weather', 'building'] },
         layers: { iso: true, rh: true, h: true, wb: false, rho: false, fog: true, comfort: true, edge: false, pw: true, values: false },
         range: Object.assign({}, RANGE_PRESETS.standard),
-        comfort: { tMin: 20, tMax: 26, rhMin: 30, rhMax: 70, xMax: 11.5 }
+        comfort: { tMin: 20, tMax: 26, rhMin: 30, rhMax: 70, xMax: 11.5 },
+        lbkComfort: true                         // comfortzone in het Mollier-diagram van de LBK (niet bij Processen)
     };
 
     const store = {
@@ -298,7 +299,8 @@
             ewf: Object.assign({}, DEFAULT_PREFS.ewf, p.ewf && typeof p.ewf === 'object' ? p.ewf : {}),
             layers: Object.assign({}, DEFAULT_PREFS.layers, p.layers || {}),
             range: validRange(p.range) ? p.range : Object.assign({}, DEFAULT_PREFS.range),
-            comfort: Object.assign({}, DEFAULT_PREFS.comfort, p.comfort || {})
+            comfort: Object.assign({}, DEFAULT_PREFS.comfort, p.comfort || {}),
+            lbkComfort: p.lbkComfort !== false
         };
     }
     function savePrefs() { store.set(STORE_PREFS, JSON.stringify(prefs)); }
@@ -811,11 +813,20 @@
             fog: t('chart.fogLabel'), edge: t('chart.edge'), aux: t('chart.aux')
         };
     }
+    /** Lagen van het Processen-diagram: de comfortzone hoort bij de LBK-weergave en staat hier altijd uit. */
+    const procLayers = () => Object.assign({}, prefs.layers, { comfort: false });
     function chartOptions() {
         return {
-            type: prefs.chart, p: pressure(), theme: skin(), range: prefs.range, layers: prefs.layers,
+            type: prefs.chart, p: pressure(), theme: skin(), range: prefs.range, layers: procLayers(),
             comfort: prefs.comfort, fmt, labels: chartLabels()
         };
+    }
+    /** Grenzen van de comfortzone (LBK-diagram) valideren en bewaren; false bij ongeldige invoer. */
+    function setComfort(C) {
+        if (![C.tMin, C.tMax, C.rhMin, C.rhMax].every(isFinite) || !(C.tMax > C.tMin) || !(C.rhMax > C.rhMin) || C.rhMin < 0 || C.rhMax > 100) return false;
+        prefs.comfort = { tMin: C.tMin, tMax: C.tMax, rhMin: C.rhMin, rhMax: C.rhMax, xMax: isFinite(C.xMax) ? C.xMax : 0 };
+        savePrefs();
+        return true;
     }
     function configureChart() {
         lastChartP = pressure();
@@ -850,7 +861,7 @@
         const m = prefs.chart === 'mollier';
         const chips = [
             ['rh', C.rh, ''], ['h', C.h, ''], ['iso', C.isoMajor, ''], ['wb', C.wb, 'dash'],
-            ['rho', C.rho, 'dot', m ? 'layer.rhoM' : 'layer.rhoP'], ['fog', C.muted, 'box'], ['comfort', C.comfort, 'fill']
+            ['rho', C.rho, 'dot', m ? 'layer.rhoM' : 'layer.rhoP'], ['fog', C.muted, 'box']
         ];
         if (m) chips.push(['edge', C.muted, ''], ['pw', C.axisText, '']);
         chips.push(['values', C.text, '']);
@@ -860,15 +871,12 @@
     }
 
     function renderRangePop() {
-        const R = prefs.range, C = prefs.comfort;
+        const R = prefs.range;
         const inp = (id, v) => `<input class="input" id="${id}" inputmode="decimal" value="${esc(fmtIn(v))}">`;
         const f = (lbl, id, v) => `<label class="fld"><span class="fld-lbl">${esc(t(lbl))}</span>${inp(id, v)}</label>`;
         $('#range-pop').innerHTML = `<div class="pop-sec"><div class="pop-title">${esc(t('range.title'))}</div>
             <div class="range-grid">${f('range.tMin', 'rg-tmin', R.tMin)}${f('range.tMax', 'rg-tmax', R.tMax)}${f('range.xMax', 'rg-xmax', R.xMax)}</div>
             <div class="preset-row">${Object.keys(RANGE_PRESETS).map((k) => `<button type="button" data-preset="${k}">${esc(t('range.' + k))}</button>`).join('')}</div></div>
-            <div class="pop-sec"><div class="pop-title">${esc(t('range.comfortTitle'))}</div>
-            <div class="range-grid">${f('range.ctMin', 'cf-tmin', C.tMin)}${f('range.ctMax', 'cf-tmax', C.tMax)}${f('range.cxMax', 'cf-xmax', C.xMax)}
-            ${f('range.crhMin', 'cf-rhmin', C.rhMin)}${f('range.crhMax', 'cf-rhmax', C.rhMax)}</div></div>
             <div class="pop-sec"><button type="button" class="btn primary" id="rg-apply" style="width:100%">${esc(t('range.apply'))}</button></div>`;
     }
 
@@ -876,11 +884,6 @@
         const g = (id) => parseNum($('#' + id).value);
         const R = preset ? Object.assign({}, RANGE_PRESETS[preset]) : { tMin: g('rg-tmin'), tMax: g('rg-tmax'), xMax: g('rg-xmax') };
         if (!validRange(R)) { toast(t('err.ERR_INVALID'), true); return; }
-        const C = { tMin: g('cf-tmin'), tMax: g('cf-tmax'), rhMin: g('cf-rhmin'), rhMax: g('cf-rhmax'), xMax: g('cf-xmax') };
-        if ([C.tMin, C.tMax, C.rhMin, C.rhMax].every(isFinite) && C.tMax > C.tMin && C.rhMax > C.rhMin && C.rhMin >= 0 && C.rhMax <= 100) {
-            if (!isFinite(C.xMax)) C.xMax = 0;
-            prefs.comfort = C;
-        }
         prefs.range = R;
         savePrefs();
         configureChart();
@@ -1205,7 +1208,7 @@
         pressure: () => pressure(),
         chartLabels: () => chartLabels(),
         palette: () => PALETTE[skin()],
-        layers: () => prefs.layers, comfort: () => prefs.comfort, chartType: () => prefs.chart,
+        layers: () => prefs.layers, comfort: () => prefs.comfort, setComfort, chartType: () => prefs.chart,
         csv: (rows, name) => {
             const nl = I.lang === 'nl', sep = nl ? ';' : ',';
             const q = (v) => {
@@ -1542,7 +1545,7 @@
             prefs.layers[k] = !prefs.layers[k];
             savePrefs();
             b.setAttribute('aria-pressed', String(prefs.layers[k]));
-            chart.configure({ layers: prefs.layers });
+            chart.configure({ layers: procLayers() });
         });
 
         // Tabellen

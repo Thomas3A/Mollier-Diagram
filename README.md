@@ -23,7 +23,7 @@ Geen build-stap, geen server: statische HTML + JavaScript. Werkt ook offline (D3
   isothermen, rechte isenthalpen en geknikte isothermen in het **mistgebied**.
 - Omschakelbaar naar het psychrometrisch (ASHRAE/Carrier) diagram — toets `M`.
 - Lagen aan/uit: RH-lijnen φ, isenthalpen, isothermen, natteboltemperatuur, dichtheid ρ / specifiek volume v,
-  mistgebied, comfortzone, randmaatstaf Δh/Δx, dampspanningsschaal, waarden bij punten.
+  mistgebied, randmaatstaf Δh/Δx, dampspanningsschaal, waarden bij punten.
 - Statusbalk met t, x, φ, h, t_nat, t_dauw, ρ en p_w onder de cursor, met hulplijnen door het punt.
 - Zoomen (Ctrl/⌘ + scroll, knijpen), verschuiven, *passend maken* en instelbaar bereik met voorinstellingen.
 - Punten slepen (beginpunt, vrije punten, mengstroom, retourlucht); dubbelklik voegt een punt toe.
@@ -72,7 +72,8 @@ Tweede weergave (schakelaar in de topbalk): een **luchtbehandelingskast stap voo
   (stoom of adiabatisch), ventilator (Δp, η, deellastexponent) en geluiddemper. Volgorde wijzigen, aan/uit,
   dupliceren; *Voorstel op basis van de eisen* zet een standaard-LBK neer.
 - **Resultaat bij winter- en zomerontwerpcondities:** kerngetallen (vermogens, SFP, WTW), adviezen,
-  een **LBK-schema** met puntnummers en toestanden, het **Mollier-diagram** (beide condities) en tabellen met
+  een **LBK-schema** met puntnummers en toestanden, het **Mollier-diagram** (beide condities, met een
+  comfortzone die je met een knop aan/uit zet en waarvan je de grenzen instelt) en tabellen met
   toestanden en vermogens per component. *Open in Processen* zet de procesketen als scenario's in het diagram.
 - Meerdere LBK's per project (varianten vergelijken), alles in opslaan, delen en ongedaan maken.
 

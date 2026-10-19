@@ -450,6 +450,12 @@
                 <div class="card chart-card lbk-chart-card">
                     <div class="chart-head"><div class="chart-title" id="lbk-chart-title"></div>
                         <div class="chart-tools">
+                            <button type="button" class="layer-chip lbk-comfort-chip" id="lbk-comfort" aria-pressed="true"><i class="sw fill"></i>${esc(t('layer.comfort'))}</button>
+                            <div class="menu" id="lbk-comfort-menu">
+                                <button type="button" class="icon-btn sm" id="lbk-comfort-set" aria-haspopup="true" aria-expanded="false" title="${esc(t('range.comfortTitle'))}"><svg><use href="#i-sliders"/></svg></button>
+                                <div class="menu-pop wide" id="lbk-comfort-pop"></div>
+                            </div>
+                            <span class="tb-sep"></span>
                             <button type="button" class="tb-btn sm" id="lbk-to-proc"><svg><use href="#i-share"/></svg><span>${esc(t('lbk.chart.toProc'))}</span></button>
                             <span class="tb-sep"></span>
                             <button type="button" class="icon-btn sm" id="lbk-zoom-out" title="${esc(t('chart.zoomOut'))}"><svg><use href="#i-minus"/></svg></button>
@@ -633,16 +639,39 @@
         let tMin = -20, tMax = 40, xMax = 20;
         for (const sc of scns) for (const s of sc.states) { tMin = Math.min(tMin, Math.floor(s.t / 5) * 5 - 5); tMax = Math.max(tMax, Math.ceil(s.t / 5) * 5 + 5); xMax = Math.max(xMax, Math.ceil(s.x * G) + 4); }
         const range = { tMin, tMax, xMax };
-        const key = JSON.stringify([app.chartType(), app.skin(), app.lang, p(), range]);
+        const comfortOn = app.prefs().lbkComfort !== false;
+        const chip = $('#lbk-comfort');
+        chip.setAttribute('aria-pressed', String(comfortOn));
+        chip.style.setProperty('--c', root.MollierChart.THEMES[app.skin()].comfort);
+        const key = JSON.stringify([app.chartType(), app.skin(), app.lang, p(), range, comfortOn, app.comfort()]);
         if (key !== S.chartKey) {
             S.chartKey = key;
             S.chart.configure({
                 type: app.chartType(), p: p(), theme: app.skin(), range, fmt,
-                layers: Object.assign({}, app.layers(), { comfort: false, values: false }), comfort: app.comfort(), labels: app.chartLabels()
+                layers: Object.assign({}, app.layers(), { comfort: comfortOn, values: false }), comfort: app.comfort(), labels: app.chartLabels()
             });
         }
         S.chart.setData({ scenarios: scns, selected: null, highlight: null, preview: null });
         renderStatus();
+    }
+
+    /** Grenzen van de comfortzone (voorkeur, geldt voor alle LBK's). */
+    function renderComfortPop() {
+        const C = app.comfort();
+        const f = (lbl, id, v) => `<label class="fld"><span class="fld-lbl">${esc(t(lbl))}</span><input class="input" id="${id}" inputmode="decimal" value="${esc(isFinite(v) ? fmtA(v, 2) : '')}"></label>`;
+        $('#lbk-comfort-pop').innerHTML = `<div class="pop-sec"><div class="pop-title">${esc(t('range.comfortTitle'))}</div>`
+            + `<div class="range-grid">${f('range.ctMin', 'lbk-cf-tmin', C.tMin)}${f('range.ctMax', 'lbk-cf-tmax', C.tMax)}${f('range.cxMax', 'lbk-cf-xmax', C.xMax)}`
+            + `${f('range.crhMin', 'lbk-cf-rhmin', C.rhMin)}${f('range.crhMax', 'lbk-cf-rhmax', C.rhMax)}</div></div>`
+            + `<div class="pop-sec"><button type="button" class="btn primary" id="lbk-cf-apply" style="width:100%">${esc(t('range.apply'))}</button></div>`;
+    }
+    function applyComfort() {
+        const g = (id) => app.parseNum($('#' + id).value);
+        const ok = app.setComfort({ tMin: g('lbk-cf-tmin'), tMax: g('lbk-cf-tmax'), rhMin: g('lbk-cf-rhmin'), rhMax: g('lbk-cf-rhmax'), xMax: g('lbk-cf-xmax') });
+        if (!ok) { app.toast(t('err.ERR_INVALID'), true); return; }
+        const m = $('#lbk-comfort-menu');
+        m.classList.remove('open');
+        $('#lbk-comfort-set').setAttribute('aria-expanded', 'false');
+        if (unit()) renderChart(unit());
     }
 
     function renderStatus() {
@@ -916,6 +945,21 @@
             else if (e.target.closest('#lbk-zoom-out') && S.chart) S.chart.zoomBy(1 / 1.5);
             else if (e.target.closest('#lbk-fit') && S.chart) S.chart.fitToData();
             else if (e.target.closest('#lbk-reset') && S.chart) S.chart.resetView();
+            else if (e.target.closest('#lbk-comfort')) {
+                app.prefs().lbkComfort = app.prefs().lbkComfort === false;
+                app.savePrefs();
+                if (unit()) renderChart(unit());
+            } else if (e.target.closest('#lbk-comfort-set')) {
+                e.stopPropagation();
+                const m = $('#lbk-comfort-menu'), open = !m.classList.contains('open');
+                $$('.menu.open').forEach((x) => x.classList.remove('open'));
+                if (open) renderComfortPop();
+                m.classList.toggle('open', open);
+                $('#lbk-comfort-set').setAttribute('aria-expanded', String(open));
+            } else if (e.target.closest('#lbk-cf-apply')) applyComfort();
+        });
+        content.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.closest('#lbk-comfort-pop')) { e.preventDefault(); applyComfort(); }
         });
         content.addEventListener('keydown', (e) => {
             const blk = e.target.closest('.blk[data-comp]');
