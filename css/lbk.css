@@ -267,6 +267,7 @@
     .lbk-comp .step-actions { grid-column: 1 / -1; justify-content: flex-end; opacity: 1; }
     .lbk-grid3 { grid-template-columns: 1fr 1fr; }
     .lbk-chart-card .tb-btn span { display: none; }
+    .lbk-chart-card .chart-head { flex-wrap: wrap; }
     /* Volgorde zoals in de DOM: kerngetallen bovenaan (app.css herschikt .kpis/.chart-card in de Processen-weergave) */
     #lbk-main > *, #energy-main > * { order: 0; }
 }
