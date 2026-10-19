@@ -1,9 +1,16 @@
 # Mollier h,x-diagram
 
 Interactief **Mollier h,x-diagram** (en psychrometrisch diagram) voor het ontwerpen en controleren van
-luchtbehandelingsprocessen. Kies een beginpunt, voeg processtappen toe en lees direct toestanden,
-vermogens en waterdebieten af — met een echt scheefhoekig Mollier-diagram, live voorvertoning en
-meerdere scenario's (bijv. zomer en winter) in één diagram.
+luchtbehandelingsprocessen. Drie werkwijzen:
+
+1. **Processen** — stap voor stap: eerst debiet en begintoestand, dan processen kiezen en invullen
+   (verwarmen, koelen, mengen, WTW, …) en direct toestanden, vermogens en waterdebieten aflezen.
+2. **LBK samenstellen** — een luchtbehandelingskast component voor component opbouwen: een bestaande LBK
+   (met capaciteiten, om scenario's te testen) of een nieuw ontwerp vanuit de eisen aan de toevoerlucht.
+3. **Energieverbruik** — de geselecteerde LBK uur voor uur doorrekenen over een klimaatjaar (KNMI De Bilt),
+   met weekpatroon, bedrijf buiten kantooruren en resultaten per maand.
+
+De app start altijd met een leeg diagram; de vorige sessie blijft herstelbaar.
 
 Geen build-stap, geen server: statische HTML + JavaScript. Werkt ook offline (D3 is meegeleverd).
 
@@ -41,6 +48,8 @@ Geen build-stap, geen server: statische HTML + JavaScript. Werkt ook offline (D3
 - Luchtdruk uit hoogte of direct in kPa.
 
 **Werken**
+- Leeg beginnen: stap 1 is het luchtdebiet en de begintoestand; het procesformulier (stap 2) wordt pas
+  actief als punt 1 in het diagram staat. *Bestand → Vorige sessie herstellen* haalt het laatste werk terug.
 - Scenario's met eigen kleur, naam en zichtbaarheid (dupliceren, verwijderen).
 - Ongedaan maken / opnieuw (Ctrl+Z / Ctrl+Y); alles wordt automatisch in de browser bewaard.
 - **Delen via link** (project gecomprimeerd in de URL), project opslaan/openen als JSON.
@@ -48,9 +57,44 @@ Geen build-stap, geen server: statische HTML + JavaScript. Werkt ook offline (D3
 - Nederlands en Engels, licht en donker thema, bruikbaar op telefoon en tablet.
 - Projecten uit de vorige versie worden automatisch overgenomen.
 
+## LBK samenstellen
+
+Tweede weergave (schakelaar in de topbalk): een **luchtbehandelingskast stap voor stap samenstellen**.
+
+- **Bestaande LBK** (capaciteit per batterij/bevochtiger; vermogens worden daarop begrensd en de tool laat zien
+  of de eisen worden gehaald) of **nieuw ontwerp** (onbegrensd: de tool berekent de benodigde vermogens;
+  *Vermogens vastleggen* neemt ze +10 % over en rekent verder als bestaande LBK).
+- **Stap 1–4:** luchtdebiet (toevoer en retour), eisen aan de toevoerlucht (vast of buitentemperatuur-
+  gecompenseerd, min./max. vochtgehalte, retourlucht), componenten aan de toevoerzijde in luchtrichting en de
+  retour-/afvoerzijde. Componenten: filter, WTW (platenwisselaar, twin-coil, thermisch wiel, sorptiewiel, met
+  vorstbeveiliging en optioneel indirect adiabatisch koelen), mengkamer (vast of regelend), verwarmer
+  (naar setpoint of voorverwarmer), koeler (bypassfactor en ADP, ontvochtigen tot x_max), bevochtiger
+  (stoom of adiabatisch), ventilator (Δp, η, deellastexponent) en geluiddemper. Volgorde wijzigen, aan/uit,
+  dupliceren; *Voorstel op basis van de eisen* zet een standaard-LBK neer.
+- **Resultaat bij winter- en zomerontwerpcondities:** kerngetallen (vermogens, SFP, WTW), adviezen,
+  een **LBK-schema** met puntnummers en toestanden, het **Mollier-diagram** (beide condities) en tabellen met
+  toestanden en vermogens per component. *Open in Processen* zet de procesketen als scenario's in het diagram.
+- Meerdere LBK's per project (varianten vergelijken), alles in opslaan, delen en ongedaan maken.
+
+## Energieverbruik
+
+Derde weergave, alleen actief als er een LBK is samengesteld:
+
+- **Weekpatroon** van 7 × 24 uurblokken met bezetting (standaard werkdagen 8–17 uur met 80 %): klikken of slepen
+  om te schilderen, dag-/uurkoppen vullen een rij of kolom, snelle voorinstellingen.
+- **Bedrijfsvoering:** debiet volgt de bezetting (met minimum) of constant; **buiten kantooruren**: uit,
+  basisventilatie (volledig behandeld of alleen vorstvrij) of zomernachtventilatie.
+- **Klimaatjaar:** energiejaar, ontwerpjaren T5 en T1, stresstestwinters 1978/79 en 1962/63
+  (reconstructie NEN 5060:2018 uit KNMI De Bilt, geen officiële NEN-data) en de werkelijke jaren 1951–2025.
+- **Resultaten:** warmte, koude, bevochtiging en ventilatoren per maand (gestapelde kolommen in kWh of €),
+  tabellen per maand en per component, belastingduurkromme, uren waarin de eisen niet worden gehaald,
+  eindenergie (gas, elektriciteit, warmte, water) en kosten volgens opwekking en tarieven, en een vergelijking
+  van alle LBK's.
+- Rekenmethode: [`docs/lbk/METHODE.md`](docs/lbk/METHODE.md); klimaatdata: [`docs/klimaat/README.md`](docs/klimaat/README.md).
+
 ## Earth, Wind & Fire
 
-Tweede weergave (schakelaar in de topbalk of toets `E`): een fysisch onderbouwde **momentopname van het
+Vierde weergave (schakelaar in de topbalk of toets `E`): een fysisch onderbouwde **momentopname van het
 Earth, Wind & Fire-concept** (Ventecdak, klimaatcascade, zonneschoorsteen) voor een kantoorgebouw in
 Nederland, naar B. Bronsema (2013), *Earth, Wind & Fire – Natuurlijke Airconditioning*, proefschrift TU Delft.
 
@@ -97,7 +141,7 @@ Open `index.html` in een moderne browser, of start een lokale server:
 
 ```bash
 npm start        # http://localhost:8080
-npm test         # rekenkern-, proces- en EWF-tests (Node 18+)
+npm test         # rekenkern-, proces-, LBK-, klimaat- en EWF-tests (Node 18+)
 ```
 
 ## Bestanden
@@ -119,9 +163,19 @@ npm test         # rekenkern-, proces- en EWF-tests (Node 18+)
 | `js/ewf/charts.js`       | EWF-grafieken (D3) |
 | `js/ewf/view.js`         | EWF-weergave: panelen, KPI's, meldingen, tabbladen |
 | `css/ewf.css`            | Stijl EWF-weergave |
+| `js/lbk/engine.js`       | LBK-rekenkern: componenten, regeling per uur, ontwerpcondities, jaarberekening, eindenergie (geen DOM) |
+| `js/lbk/climate.js`      | Klimaatjaren laden (lazy) en omrekenen naar T en x per uur |
+| `js/lbk/view.js`         | Weergave LBK samenstellen: zijbalk, kerngetallen, adviezen, Mollier-diagram, tabellen |
+| `js/lbk/schematic.js`    | LBK-schema (SVG) |
+| `js/lbk/energy.js`       | Weergave Energieverbruik: weekpatroon, instellingen, grafieken en tabellen |
+| `js/lbk/texts.js`        | Teksten LBK en energie (NL/EN) |
+| `css/lbk.css`            | Stijl LBK- en energieweergave |
+| `data/klimaat/`          | Klimaatdata KNMI De Bilt (referentiejaren en 1951–2025, als script verpakte JSON) |
+| `docs/lbk/`, `docs/klimaat/` | Rekenmethode LBK en herkomst klimaatdata |
+| `scripts/klimaat/`       | Reproductie van de klimaatjaren (Python) en `wrap-json.js` |
 | `docs/ewf/`              | Specificatie, rekenmethode en validatie, referentie-implementatie (Python) |
 | `vendor/d3.min.js`       | D3 v7.9.0 (ISC-licentie) |
-| `test/`                  | Tests, PsychroLib-referentiewaarden, EWF-orakel en weer-fixture |
+| `test/`                  | Tests, PsychroLib-referentiewaarden, EWF-orakel, weer-fixture, LBK- en klimaattests |
 
 ## GitHub Pages
 

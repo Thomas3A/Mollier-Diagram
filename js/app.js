@@ -1,14 +1,16 @@
 /**
  * app.js — applicatielogica Mollier h,x-diagram
  *
- * Project (ongedaan te maken): druk, scenario's met beginpunt, debiet en processtappen.
+ * Project (ongedaan te maken): druk, scenario's met beginpunt, debiet en processtappen, LBK's (project.lbk)
+ * en de Earth, Wind & Fire-invoer (project.ewf).
  * Voorkeuren (niet in geschiedenis): taal, thema, diagramtype, lagen, bereik, comfortzone.
+ * De app start altijd met een leeg project; de vorige sessie blijft herstelbaar (Bestand → Vorige sessie).
  * Alles wordt automatisch in localStorage bewaard; delen via een link met gecomprimeerd project.
  */
 (function () {
     'use strict';
 
-    const P = window.Psychro, PR = window.Processes, I = window.I18N, EM = window.EwfModel;
+    const P = window.Psychro, PR = window.Processes, I = window.I18N, EM = window.EwfModel, LE = window.LbkEngine;
     const { t, fmt, fmtAuto: fmtA, parseNum } = I;
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -18,6 +20,7 @@
     const clone = (o) => JSON.parse(JSON.stringify(o));
 
     const STORE_PROJECT = 'mollier.project.v4';
+    const STORE_PREVIOUS = 'mollier.project.previous';     // laatste sessie met inhoud (de app start altijd leeg)
     const STORE_PREFS = 'mollier.prefs';
     const STORE_LEGACY = 'psychro-project';
 
@@ -36,7 +39,7 @@
         winter: { tMin: -25, tMax: 30, xMax: 15 },
         hot: { tMin: 0, tMax: 90, xMax: 80 }
     };
-    const VIEWS = ['mollier', 'ewf'];
+    const VIEWS = ['mollier', 'lbk', 'energy', 'ewf'];
     const DEFAULT_PREFS = {
         lang: 'nl', theme: 'auto', brand: 'default', chart: 'mollier', tab: 'states', view: 'mollier',
         ewf: { tab: 'profile', anim: true, panels: ['weather', 'building'] },
@@ -64,7 +67,8 @@
         preview: null,
         form: null,              // { cat, type, params, label, editingId }
         paramsByType: {},
-        lastTypeByCat: {}
+        lastTypeByCat: {},
+        startDraft: { scnId: null, pair: 't-rh', a: NaN, b: NaN }   // begintoestand die nog niet compleet is
     };
 
     // =====================================================================
@@ -89,12 +93,23 @@
             makeStep('heat', { mode: 'toT', value: 16 }),
             makeStep('fan', { dp: 600, eff: 65 })
         ]);
-        return { version: 4, name: t('example.name'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: w.id, scenarios: [w, z], ewf: EM.defaultState() };
+        const lbk = LE.defaultState();
+        const unit = LE.exampleUnit(t('example.lbk'), 2);
+        lbk.units.push(unit);
+        lbk.active = unit.id;
+        return { version: 5, name: t('example.name'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: w.id, scenarios: [w, z], lbk, ewf: EM.defaultState() };
     }
 
+    /** Leeg project: één scenario zonder begintoestand en zonder debiet, geen LBK's. */
     function emptyProject() {
-        const sc = makeScenario(t('scn.newName', { n: 1 }), 0, { pair: 't-rh', a: 20, b: 50 }, { mode: 'volume', value: 1000 });
-        return { version: 4, name: t('example.newName'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: sc.id, scenarios: [sc], ewf: EM.defaultState() };
+        const sc = makeScenario(t('scn.newName', { n: 1 }), 0, null, { mode: 'volume', value: null });
+        return { version: 5, name: t('example.newName'), pressure: { mode: 'altitude', altitude: 0, kpa: 101.325 }, active: sc.id, scenarios: [sc], lbk: LE.defaultState(), ewf: EM.defaultState() };
+    }
+
+    /** Heeft een project inhoud die het bewaren waard is (begintoestand, stappen, LBK of gewijzigde EWF-invoer)? */
+    function hasContent(pj) {
+        return pj.scenarios.some((s) => s.start || s.steps.length) || pj.lbk.units.length > 0
+            || JSON.stringify(pj.ewf) !== JSON.stringify(EM.defaultState());
     }
 
     /** Alleen eindige getallen en korte strings uit onbekende invoer overnemen. */
@@ -117,7 +132,7 @@
         }
         const pr = pj.pressure || {};
         const out = {
-            version: 4,
+            version: 5,
             name: String(pj.name || t('example.newName')).slice(0, 120),
             pressure: {
                 mode: pr.mode === 'pressure' ? 'pressure' : 'altitude',
@@ -126,6 +141,7 @@
             },
             active: String(pj.active || ''),
             scenarios: [],
+            lbk: LE.normalizeState(pj.lbk),         // luchtbehandelingskasten en energie-instellingen
             ewf: EM.normalizeState(pj.ewf)          // Earth, Wind & Fire; oude projecten krijgen de standaard
         };
         const ids = new Set();
@@ -135,9 +151,11 @@
             if (ids.has(id)) id = uid();
             ids.add(id);
             const st = s.start || {};
-            const start = P.PAIRS.includes(st.pair) && isFinite(st.a) && isFinite(st.b)
-                ? { pair: st.pair, a: +st.a, b: +st.b } : { pair: 't-rh', a: 20, b: 50 };
-            const flow = { mode: s.flow && s.flow.mode === 'mass' ? 'mass' : 'volume', value: Math.max(0, Number(s.flow && s.flow.value) || 0) };
+            // Zonder geldige begintoestand blijft het scenario leeg (de gebruiker vult hem in)
+            const start = P.PAIRS.includes(st.pair) && isFinite(st.a) && isFinite(st.b) && st.a !== null && st.b !== null
+                ? { pair: st.pair, a: +st.a, b: +st.b } : null;
+            const fv = s.flow && s.flow.value;
+            const flow = { mode: s.flow && s.flow.mode === 'mass' ? 'mass' : 'volume', value: fv === null || fv === undefined || fv === '' ? null : Math.max(0, Number(fv) || 0) };
             const stepIds = new Set();
             const steps = (Array.isArray(s.steps) ? s.steps : []).filter((x) => x && PR.TYPES[x.type]).slice(0, 80).map((x) => {
                 let sid = String(x.id || uid()).slice(0, 20);
@@ -147,7 +165,7 @@
             });
             out.scenarios.push({ id, name: String(s.name || '—').slice(0, 40), color: Math.abs(parseInt(s.color, 10) || 0) % 6, visible: s.visible !== false, start, flow, steps });
         }
-        if (!out.scenarios.length) return Object.assign(emptyProject(), { ewf: out.ewf });
+        if (!out.scenarios.length) return Object.assign(emptyProject(), { name: out.name, pressure: out.pressure, lbk: out.lbk, ewf: out.ewf });
         if (!out.scenarios.some((s) => s.id === out.active)) out.active = out.scenarios[0].id;
         return out;
     }
@@ -186,7 +204,7 @@
         const alt = isFinite(old.altitude) ? +old.altitude : isFinite(settings.altitude) ? +settings.altitude : 0;
         const flow = isFinite(old.airflow) ? +old.airflow : isFinite(settings.airflow) ? +settings.airflow : 1000;
         const sc = makeScenario(t('scn.newName', { n: 1 }), 0, start, { mode: 'volume', value: flow }, steps);
-        return { version: 4, name: t('example.newName'), pressure: { mode: 'altitude', altitude: alt, kpa: 101.325 }, active: sc.id, scenarios: [sc], ewf: EM.defaultState() };
+        return { version: 5, name: t('example.newName'), pressure: { mode: 'altitude', altitude: alt, kpa: 101.325 }, active: sc.id, scenarios: [sc], lbk: LE.defaultState(), ewf: EM.defaultState() };
     }
 
     const activeScn = () => project.scenarios.find((s) => s.id === project.active) || project.scenarios[0];
@@ -289,16 +307,30 @@
             && r.tMin >= -90 && r.tMax <= 190 && r.tMax - r.tMin >= 5 && r.xMax >= 1 && r.xMax <= 500;
     }
 
+    /**
+     * De app start altijd met een leeg diagram. Had de vorige sessie inhoud, dan wordt die apart bewaard
+     * en is hij te herstellen (toast en Bestand → Vorige sessie herstellen).
+     */
     function initialProject() {
-        const raw = store.get(STORE_PROJECT);
-        if (raw) {
-            try { return { pj: normalize(JSON.parse(raw)) }; } catch (e) { /* beschadigd: val terug */ }
+        for (const key of [STORE_PROJECT, STORE_LEGACY]) {
+            const raw = store.get(key);
+            if (!raw) continue;
+            try {
+                const pj = normalize(JSON.parse(raw));
+                if (hasContent(pj)) { store.set(STORE_PREVIOUS, JSON.stringify(pj)); break; }
+            } catch (e) { /* beschadigd: negeren */ }
         }
-        const legacy = store.get(STORE_LEGACY);
-        if (legacy) {
-            try { return { pj: normalize(JSON.parse(legacy)), msg: t('toast.migrated') }; } catch (e) { /* negeren */ }
-        }
-        return { pj: exampleProject() };
+        return { pj: emptyProject() };
+    }
+    function previousProject() {
+        const raw = store.get(STORE_PREVIOUS);
+        if (!raw) return null;
+        try { return normalize(JSON.parse(raw)); } catch (e) { return null; }
+    }
+    function restorePrevious() {
+        const pj = previousProject();
+        if (!pj) { toast(t('toast.noPrevious'), true); return; }
+        replaceProject(pj, t('toast.restored', { name: pj.name }));
     }
 
     // =====================================================================
@@ -402,6 +434,8 @@
         applyI18n();
         renderViewChrome();
         if (window.EwfView) window.EwfView.renderAll();
+        if (window.LbkView) window.LbkView.renderAll();
+        if (window.LbkEnergy) window.LbkEnergy.renderAll();
         renderScenarioPanel();
         renderStartPanel(true);
         renderSystem(true);
@@ -414,6 +448,7 @@
     function render() {
         renderScenarioTabs();
         renderStartPanel(false);
+        renderFormLock();
         renderSystem(false);
         renderSteps();
         renderKPIs();
@@ -422,7 +457,10 @@
         updateChart();
         updateUndoButtons();
         document.title = `${project.name} · ${t('app.title')}`;
+        renderViewChrome();
         if (window.EwfView) window.EwfView.sync();
+        if (window.LbkView) window.LbkView.sync();
+        if (window.LbkEnergy) window.LbkEnergy.sync();
     }
 
     function setVal(el, v) { if (document.activeElement !== el) el.value = v; }
@@ -451,20 +489,33 @@
     }
 
     // ---- Beginpunt ----
+    /** Begintoestand van het actieve scenario, of het concept zolang die nog niet compleet is. */
+    function startValues(sc) {
+        if (sc.start) return sc.start;
+        if (ui.startDraft.scnId !== sc.id) ui.startDraft = { scnId: sc.id, pair: 't-rh', a: NaN, b: NaN };
+        return ui.startDraft;
+    }
+
     function renderStartPanel(full) {
-        const sc = activeScn(), r = results[sc.id];
-        const [qa, qb] = sc.start.pair.split('-');
-        if (full || document.activeElement !== $('#start-pair')) $('#start-pair').value = sc.start.pair;
+        const sc = activeScn(), r = results[sc.id], st = startValues(sc);
+        const [qa, qb] = st.pair.split('-');
+        if (full || document.activeElement !== $('#start-pair')) $('#start-pair').value = st.pair;
         $('#start-a-lbl').textContent = t('q.' + qa);
         $('#start-b-lbl').textContent = t('q.' + qb);
         $('#start-a-unit').textContent = PR.PAIR_UNITS[qa];
         $('#start-b-unit').textContent = PR.PAIR_UNITS[qb];
-        setVal($('#start-a'), fmtIn(sc.start.a));
-        setVal($('#start-b'), fmtIn(sc.start.b));
-        setVal($('#flow-value'), fmtIn(sc.flow.value));
+        $('#start-a').placeholder = fmtIn(PR.TYPES.point.fields[1].def({ pair: st.pair }));
+        $('#start-b').placeholder = fmtIn(PR.TYPES.point.fields[2].def({ pair: st.pair }));
+        setVal($('#start-a'), fmtIn(st.a));
+        setVal($('#start-b'), fmtIn(st.b));
+        setVal($('#flow-value'), sc.flow.value == null ? '' : fmtIn(sc.flow.value));
         $('#flow-mode').value = sc.flow.mode;
+        $('#panel-start').classList.toggle('todo', !!r.empty);
         const strip = $('#start-summary');
-        if (r.error) {
+        if (r.empty) {
+            strip.className = 'state-strip todo';
+            strip.textContent = t('start.empty');
+        } else if (r.error) {
             strip.className = 'state-strip error';
             strip.textContent = errMsg(r.error);
         } else {
@@ -476,8 +527,8 @@
             ].map(([k, v, u]) => `<div><span>${esc(t(k))}</span> <b>${v}</b> ${u}</div>`).join('');
         }
         const fs = $('#flow-summary');
-        if (!r.error && r.mdot > 0) fs.textContent = t('start.mdot', { m: fmt(r.mdot, 3), v: fmt(r.mdot * r.states[0].v * 3600, 0) });
-        else fs.textContent = r.error ? '' : t('start.noFlow');
+        if (!r.error && !r.empty && r.mdot > 0) fs.textContent = t('start.mdot', { m: fmt(r.mdot, 3), v: fmt(r.mdot * r.states[0].v * 3600, 0) });
+        else fs.textContent = r.error ? '' : t(sc.flow.value > 0 ? 'start.flowPending' : 'start.noFlow');
         $('#start-badge').style.setProperty('--scn', scnColor(sc));
     }
 
@@ -505,6 +556,7 @@
         const f = ui.form;
         $('#form-title').textContent = t(f.editingId ? 'panel.edit' : 'panel.add');
         $('#panel-form').classList.toggle('editing', !!f.editingId);
+        renderFormLock();
         $$('#cat-grid .cat-btn').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.cat === f.cat)));
         const types = PR.CATEGORIES.find((c) => c.id === f.cat).types;
         $('#step-type').innerHTML = types.map((ty) => `<option value="${ty}">${esc(t('type.' + ty))}</option>`).join('');
@@ -528,6 +580,14 @@
         updatePreview();
     }
 
+    /** Procesformulier pas beschikbaar als de begintoestand er is (stap 1 → stap 2). */
+    function renderFormLock() {
+        const locked = !!results[activeScn().id].empty;
+        $('#panel-form').classList.toggle('locked', locked);
+        $('#form-locked').hidden = !locked;
+        $$('#cat-grid .cat-btn').forEach((b) => { b.disabled = locked; });
+    }
+
     /** Reken de stap uit het formulier live door en toon het resultaat + spookpad in het diagram. */
     function updatePreview() {
         const f = ui.form, box = $('#step-preview'), sc = activeScn();
@@ -535,7 +595,10 @@
         const bad = Object.values(f.params).some((v) => typeof v === 'number' && !isFinite(v));
         const base = results[sc.id];
         let ok = false;
-        if (base.error) {
+        if (base.empty) {
+            box.className = 'preview-box';
+            box.textContent = '';
+        } else if (base.error) {
             box.className = 'preview-box error';
             box.textContent = t('form.needStart');
         } else if (bad) {
@@ -880,7 +943,7 @@
             const params = fog
                 ? { pair: 't-x', a: round(s.t, 1), b: round(s.x * 1000, 2) }
                 : { pair: 't-rh', a: round(s.t, 1), b: Math.max(0.1, round(s.rh, 1)) };
-            if (results[sc.id].error) {
+            if (results[sc.id].error || results[sc.id].empty) {
                 change((pj) => { pj.scenarios.find((x) => x.id === pj.active).start = { pair: params.pair, a: params.a, b: params.b }; });
                 toast(t('toast.startSet'));
                 return;
@@ -933,6 +996,13 @@
             };
         })()
     };
+
+    function setChartType(type) {
+        prefs.chart = type;
+        savePrefs();
+        configureChart();
+        if (window.LbkView) window.LbkView.restyle();
+    }
 
     function switchScenario(id) {
         if (id === project.active) return;
@@ -1038,7 +1108,7 @@
     async function share() {
         commit();
         const code = await encodeShare(project);
-        const url = `${location.origin}${location.pathname}${isEwf() ? '?view=ewf' : ''}#p=${code}`;
+        const url = `${location.origin}${location.pathname}${prefs.view !== 'mollier' ? '?view=' + prefs.view : ''}#p=${code}`;
         try {
             await navigator.clipboard.writeText(url);
             toast(t('toast.linkCopied'));
@@ -1060,34 +1130,48 @@
     // Weergaven: Mollier-diagram | Earth, Wind & Fire
     // =====================================================================
     const isEwf = () => prefs.view === 'ewf';
+    /** Energieverbruik kan alleen met een samengestelde en geselecteerde LBK. */
+    const hasLbk = () => !!(project && project.lbk.units.length && project.lbk.active);
     function renderViewChrome() {
-        const ewf = isEwf();
-        $$('#view-switch button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === prefs.view)));
-        $('#view-mollier').hidden = ewf;
-        $('#view-ewf').hidden = !ewf;
-        $('#chart-type').hidden = ewf;
-        document.documentElement.setAttribute('data-view', prefs.view);
+        const v = prefs.view, lock = !hasLbk();
+        $$('#view-switch button').forEach((b) => {
+            b.setAttribute('aria-selected', String(b.dataset.view === v));
+            if (b.dataset.view === 'energy') {
+                b.disabled = lock;
+                b.setAttribute('aria-disabled', String(lock));
+                b.title = lock ? t('view.energyLocked') : '';
+            }
+        });
+        for (const id of VIEWS) $('#view-' + id).hidden = id !== v;
+        $('#chart-type').hidden = v !== 'mollier' && v !== 'lbk';
+        document.documentElement.setAttribute('data-view', v);
     }
-    /** Wissel van weergave; de keuze staat in prefs.view én in de URL (?view=ewf), het #p=-formaat blijft onaangetast. */
+    /** Wissel van weergave; de keuze staat in prefs.view én in de URL (?view=…), het #p=-formaat blijft onaangetast. */
     function setView(view, push = true) {
         if (!VIEWS.includes(view) || view === prefs.view) return;
+        if (view === 'energy' && !hasLbk()) { toast(t('view.energyLocked'), true); return; }
         commit();
         prefs.view = view;
         savePrefs();
         if (push) {
             const q = new URLSearchParams(location.search);
-            if (view === 'ewf') q.set('view', 'ewf'); else q.delete('view');
+            if (view !== 'mollier') q.set('view', view); else q.delete('view');
             const qs = q.toString();
             history.pushState({ view }, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
         }
         closeMenus();
         renderViewChrome();
         if (view === 'mollier') { configureChart(); updateChart(); }
-        if (window.EwfView) window.EwfView.show(view === 'ewf');
+        showViews();
+    }
+    function showViews() {
+        if (window.EwfView) window.EwfView.show(prefs.view === 'ewf');
+        if (window.LbkView) window.LbkView.show(prefs.view === 'lbk');
+        if (window.LbkEnergy) window.LbkEnergy.show(prefs.view === 'energy');
     }
     function viewFromURL() {
         const v = new URLSearchParams(location.search).get('view');
-        return v === 'ewf' ? 'ewf' : v === 'mollier' ? 'mollier' : null;
+        return VIEWS.includes(v) ? v : null;
     }
 
     /** Scenario aanmaken of bijwerken op naam (voor "Open in Mollier-diagram"). Via change(), dus ongedaan te maken. */
@@ -1116,8 +1200,12 @@
         change, commit, toast, download, slug: () => slug(),
         prefs: () => prefs, savePrefs: () => savePrefs(),
         skin: () => skin(), theme: () => themeResolved(),
-        isView: (v) => prefs.view === v, setView,
+        isView: (v) => prefs.view === v, setView, hasLbk,
         upsertScenario,
+        pressure: () => pressure(),
+        chartLabels: () => chartLabels(),
+        palette: () => PALETTE[skin()],
+        layers: () => prefs.layers, comfort: () => prefs.comfort, chartType: () => prefs.chart,
         csv: (rows, name) => {
             const nl = I.lang === 'nl', sep = nl ? ';' : ',';
             const q = (v) => {
@@ -1127,6 +1215,9 @@
             download(new Blob(['\ufeff' + rows.map((r) => r.map(q).join(sep)).join('\r\n')], { type: 'text/csv;charset=utf-8' }), name);
         }
     };
+
+    /** Module van de actieve weergave voor export (null = Mollier-diagram). */
+    const viewModule = () => ({ ewf: window.EwfView, lbk: window.LbkView, energy: window.LbkEnergy })[prefs.view] || null;
 
     // ---- Toasts & menu's ----
     function toast(msg, error = false, html = false, ms = 3200) {
@@ -1177,10 +1268,7 @@
         $('#project-name').addEventListener('change', commit);
         $('#chart-type').addEventListener('click', (e) => {
             const b = e.target.closest('button[data-type]');
-            if (!b || b.dataset.type === prefs.chart) return;
-            prefs.chart = b.dataset.type;
-            savePrefs();
-            configureChart();
+            if (b && b.dataset.type !== prefs.chart) setChartType(b.dataset.type);
         });
         $('#view-switch').addEventListener('click', (e) => {
             const b = e.target.closest('button[data-view]');
@@ -1189,7 +1277,17 @@
         window.addEventListener('popstate', () => setView(viewFromURL() || 'mollier', false));
         $('#btn-undo').addEventListener('click', undo);
         $('#btn-redo').addEventListener('click', redo);
-        $('#btn-file').addEventListener('click', (e) => { e.stopPropagation(); toggleMenu($('#menu-file')); });
+        $('#btn-file').addEventListener('click', (e) => {
+            e.stopPropagation();
+            $('#menu-file [data-action="restore"]').disabled = !store.get(STORE_PREVIOUS);
+            toggleMenu($('#menu-file'));
+        });
+        $('#toasts').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-restore]');
+            if (!b) return;
+            b.closest('.toast').remove();
+            restorePrevious();
+        });
         $('#menu-file .menu-pop').addEventListener('click', (e) => {
             const a = e.target.closest('[data-action]');
             if (!a) return;
@@ -1197,11 +1295,12 @@
             ({
                 new: () => { if (confirm(t('confirm.newProject'))) replaceProject(emptyProject(), t('toast.newProject')); },
                 example: () => replaceProject(exampleProject(), t('toast.example')),
+                restore: restorePrevious,
                 open: () => $('#file-input').click(),
                 save: exportJSON,
-                png: () => (isEwf() ? window.EwfView.exportPNG() : exportPNG()),
-                svg: () => (isEwf() ? window.EwfView.exportSVG() : exportSVG()),
-                csv: () => (isEwf() ? window.EwfView.exportCSV() : exportCSV()),
+                png: () => (viewModule() ? viewModule().exportPNG() : exportPNG()),
+                svg: () => (viewModule() ? viewModule().exportSVG() : exportSVG()),
+                csv: () => (viewModule() ? viewModule().exportCSV() : exportCSV()),
                 print: () => window.print()
             })[a.dataset.action]();
         });
@@ -1213,6 +1312,7 @@
             savePrefs();
             renderAll();
             configureChart();
+            if (window.LbkView) window.LbkView.restyle();
         });
         const restyle = () => {
             savePrefs();
@@ -1221,6 +1321,8 @@
             configureChart();
             render();
             if (window.EwfView) window.EwfView.restyle();
+            if (window.LbkView) window.LbkView.restyle();
+            if (window.LbkEnergy) window.LbkEnergy.restyle();
         };
         $('#btn-theme').addEventListener('click', () => {
             prefs.theme = themeResolved() === 'dark' ? 'light' : 'dark';
@@ -1239,6 +1341,8 @@
                 configureChart();
                 render();
                 if (window.EwfView) window.EwfView.restyle();
+                if (window.LbkView) window.LbkView.restyle();
+                if (window.LbkEnergy) window.LbkEnergy.restyle();
             });
         }
         $('#btn-help').addEventListener('click', () => $('#dlg-help').showModal());
@@ -1251,7 +1355,7 @@
             const used = new Set(project.scenarios.map((s) => s.color));
             const color = [0, 1, 2, 3, 4, 5].find((c) => !used.has(c)) ?? project.scenarios.length % 6;
             const cur = activeScn();
-            const sc = makeScenario(t('scn.newName', { n: project.scenarios.length + 1 }), color, { pair: 't-rh', a: 20, b: 50 }, clone(cur.flow));
+            const sc = makeScenario(t('scn.newName', { n: project.scenarios.length + 1 }), color, null, clone(cur.flow));
             change((pj) => { pj.scenarios.push(sc); pj.active = sc.id; });
             resetForm();
             renderAll();
@@ -1287,6 +1391,11 @@
             const pair = e.target.value, r = activeRes();
             const [qa, qb] = pair.split('-');
             let a, b;
+            if (r.empty) {
+                Object.assign(ui.startDraft, { pair, a: NaN, b: NaN });
+                renderStartPanel(true);
+                return;
+            }
             if (!r.error) {
                 [a, b] = PR.pairValuesUI(pair, r.states[0]);
                 const rr = (q, v) => (q === 'x' ? round(v, 2) : round(v, 1));
@@ -1298,23 +1407,34 @@
         for (const k of ['a', 'b']) {
             const el = $('#start-' + k);
             el.addEventListener('input', () => {
-                const v = parseNum(el.value);
-                el.classList.toggle('invalid', !isFinite(v));
+                const v = parseNum(el.value), sc = activeScn();
+                el.classList.toggle('invalid', !isFinite(v) && el.value.trim() !== '');
+                if (!sc.start) {
+                    // Concept: pas als beide waarden er zijn, verschijnt punt 1 in het diagram
+                    const d = startValues(sc);
+                    d[k] = v;
+                    if (isFinite(d.a) && isFinite(d.b)) {
+                        change((pj) => { pj.scenarios.find((s) => s.id === pj.active).start = { pair: d.pair, a: d.a, b: d.b }; }, true);
+                        renderForm();
+                    }
+                    return;
+                }
                 if (isFinite(v)) change((pj) => { pj.scenarios.find((s) => s.id === pj.active).start[k] = v; }, true);
             });
             el.addEventListener('change', () => { commit(); el.classList.remove('invalid'); renderStartPanel(true); });
         }
         $('#flow-value').addEventListener('input', (e) => {
-            const v = parseNum(e.target.value);
-            e.target.classList.toggle('invalid', !(v >= 0));
-            if (v >= 0) change((pj) => { pj.scenarios.find((s) => s.id === pj.active).flow.value = v; }, true);
+            const raw = e.target.value.trim(), v = parseNum(raw);
+            e.target.classList.toggle('invalid', raw !== '' && !(v >= 0));
+            if (raw === '') change((pj) => { pj.scenarios.find((s) => s.id === pj.active).flow.value = null; }, true);
+            else if (v >= 0) change((pj) => { pj.scenarios.find((s) => s.id === pj.active).flow.value = v; }, true);
         });
         $('#flow-value').addEventListener('change', (e) => { commit(); e.target.classList.remove('invalid'); renderStartPanel(true); });
         $('#flow-mode').addEventListener('change', (e) => {
             const mode = e.target.value, r = activeRes(), sc = activeScn();
             let value = sc.flow.value;
             // Omrekenen zodat de massastroom gelijk blijft
-            if (!r.error && value > 0) value = mode === 'mass' ? round(value / r.states[0].v, 1) : round(value * r.states[0].v, 0);
+            if (!r.error && !r.empty && value > 0) value = mode === 'mass' ? round(value / r.states[0].v, 1) : round(value * r.states[0].v, 0);
             change((pj) => { pj.scenarios.find((s) => s.id === pj.active).flow = { mode, value }; });
             renderStartPanel(true);
         });
@@ -1450,7 +1570,7 @@
             if (mod && !e.altKey && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); redo(); return; }
             if (e.key === 'Escape') {
                 closeMenus();
-                if (isEwf()) return;
+                if (prefs.view !== 'mollier') return;
                 if (ui.form.editingId) { resetForm(); renderForm(); renderSteps(); }
                 ui.selected = null;
                 updateChart();
@@ -1459,9 +1579,9 @@
             if (typing || mod || e.altKey) return;
             if (e.key === 'e' || e.key === 'E') { setView(isEwf() ? 'mollier' : 'ewf'); return; }
             if (e.key === '?') { $('#dlg-help').showModal(); return; }
-            if (isEwf()) return;                     // diagramsneltoetsen alleen in de Mollier-weergave
-            if (e.key === 'm' || e.key === 'M') { prefs.chart = prefs.chart === 'mollier' ? 'psychro' : 'mollier'; savePrefs(); configureChart(); }
-            else if (e.key === '+' || e.key === '=') chart.zoomBy(1.5);
+            if ((e.key === 'm' || e.key === 'M') && (prefs.view === 'mollier' || prefs.view === 'lbk')) { setChartType(prefs.chart === 'mollier' ? 'psychro' : 'mollier'); return; }
+            if (prefs.view !== 'mollier') return;    // diagramsneltoetsen alleen in de Mollier-weergave
+            if (e.key === '+' || e.key === '=') chart.zoomBy(1.5);
             else if (e.key === '-') chart.zoomBy(1 / 1.5);
             else if (e.key === '0') chart.resetView();
             else if (e.key === 'f' || e.key === 'F') chart.fitToData();
@@ -1481,17 +1601,24 @@
         applyTheme();
         const { pj, msg } = initialProject();
         project = pj;
+        if (prefs.view === 'energy' && !hasLbk() && !/^#p=/.test(location.hash)) prefs.view = 'lbk';
         resetForm('heat');
         recompute();
         chart = new window.MollierChart($('#chart'), chartCallbacks);
         bindEvents();
         if (window.EwfView) window.EwfView.init(window.MollierApp);
+        if (window.LbkView) window.LbkView.init(window.MollierApp);
+        if (window.LbkEnergy) window.LbkEnergy.init(window.MollierApp);
         renderAll();
         configureChart();
         chart.setData(chartData());
-        if (window.EwfView) window.EwfView.show(isEwf());
+        showViews();
         saveLocal();
         if (msg) toast(msg);
+        const prev = previousProject();
+        if (prev && !/^#p=/.test(location.hash)) {
+            toast(`${esc(t('toast.previous', { name: prev.name }))} <button type="button" class="toast-btn" data-restore>${esc(t('toast.restoreBtn'))}</button>`, false, true, 9000);
+        }
         loadShareFromHash();
     }
 

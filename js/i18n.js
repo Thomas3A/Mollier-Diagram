@@ -16,13 +16,13 @@
             theme: 'Licht/donker', help: 'Help en sneltoetsen', lang: 'Switch to English', projectName: 'Projectnaam'
         },
         menu: {
-            new: 'Nieuw project', example: 'Voorbeeldproject laden', open: 'Project openen (.json)…', save: 'Project opslaan (.json)',
+            new: 'Nieuw project', example: 'Voorbeeldproject laden', restore: 'Vorige sessie herstellen', open: 'Project openen (.json)…', save: 'Project opslaan (.json)',
             png: 'Diagram als PNG', svg: 'Diagram als SVG (vector)', csv: 'Tabellen als CSV (Excel)', print: 'Afdrukken / PDF'
         },
         chartType: { mollier: 'Mollier h,x', psychro: 'Psychrometrisch' },
         panel: {
-            system: 'Systeem', scenarios: 'Scenario\'s', start: 'Beginpunt & luchtdebiet',
-            add: 'Processtap toevoegen', edit: 'Processtap bewerken', steps: 'Processtappen'
+            system: 'Systeem', scenarios: 'Scenario\'s', start: 'Stap 1 · Luchtdebiet & begintoestand',
+            add: 'Stap 2 · Proces toevoegen', edit: 'Processtap bewerken', steps: 'Processtappen'
         },
         sys: {
             pressureBy: 'Luchtdruk via', altitude: 'Hoogte', pressure: 'Druk', altitudeUnit: 'm',
@@ -35,7 +35,9 @@
         },
         start: {
             pair: 'Invoer met', flow: 'Luchtdebiet', flowVolume: 'm³/h', flowMass: 'kg/h droge lucht',
-            mdot: 'ṁ = {m} kg/s droge lucht · V = {v} m³/h bij het beginpunt', noFlow: 'Geen debiet: vermogens en waterdebieten worden niet berekend.'
+            mdot: 'ṁ = {m} kg/s droge lucht · V = {v} m³/h bij het beginpunt', noFlow: 'Geen debiet: vermogens en waterdebieten worden niet berekend.',
+            flowPending: 'De massastroom volgt zodra de begintoestand bekend is.',
+            empty: 'Vul de begintoestand in (bijv. de buitenlucht): temperatuur en relatieve vochtigheid. Dan verschijnt punt 1 in het diagram.'
         },
         q: {
             t: 'Temperatuur', rh: 'Relatieve vochtigheid', x: 'Vochtgehalte', h: 'Enthalpie',
@@ -110,7 +112,8 @@
         },
         form: {
             add: 'Toevoegen', update: 'Bijwerken', cancel: 'Annuleren', process: 'Proces',
-            result: 'Resultaat', needStart: 'Stel eerst een geldig beginpunt in.'
+            result: 'Resultaat', needStart: 'Stel eerst een geldig beginpunt in.',
+            locked: 'Vul eerst stap 1 in (debiet en begintoestand). Daarna kies je hier het proces: verwarmen, koelen, bevochtigen, mengen, WTW …'
         },
         steps: {
             empty: 'Nog geen processtappen. Kies hierboven een proces en klik op Toevoegen — of dubbelklik in het diagram.',
@@ -173,11 +176,13 @@
             migrated: 'Project uit de vorige versie overgenomen.', newProject: 'Nieuw project gestart.', example: 'Voorbeeldproject geladen.',
             undo: 'Ongedaan gemaakt', redo: 'Opnieuw uitgevoerd', stepAdded: 'Stap toegevoegd.', stepUpdated: 'Stap bijgewerkt.',
             pointAdded: 'Vrij punt toegevoegd op {t} °C / {x} g/kg.', startSet: 'Beginpunt ingesteld.', exportFail: 'Exporteren mislukt.',
-            eggOn: 'Hej! MÖLLIER is in elkaar gezet — er zijn geen schroefjes over.', eggOff: 'Weer terug in de standaardstijl.'
+            eggOn: 'Hej! MÖLLIER is in elkaar gezet — er zijn geen schroefjes over.', eggOff: 'Weer terug in de standaardstijl.',
+            previous: 'Leeg diagram gestart. Je vorige sessie „{name}” is bewaard.', restoreBtn: 'Herstellen',
+            restored: 'Vorige sessie hersteld: {name}', noPrevious: 'Er is geen vorige sessie bewaard.'
         },
         confirm: { newProject: 'Nieuw leeg project starten? (Ongedaan maken blijft mogelijk.)' },
         example: {
-            name: 'Voorbeeld luchtbehandelingskast', winter: 'Winter', summer: 'Zomer', newName: 'Nieuw project'
+            name: 'Voorbeeld luchtbehandelingskast', winter: 'Winter', summer: 'Zomer', newName: 'Nieuw project', lbk: 'Kantoor-LBK (voorbeeld)'
         },
         err: {
             ERR_CASCADE_H: 'Hoogte cascade moet tussen 0,5 en 200 m liggen.', ERR_CASCADE_RWL: 'RW/L moet tussen 0 en 5 liggen.',
@@ -222,7 +227,7 @@
         },
         help: {
             title: 'Help & sneltoetsen', close: 'Sluiten',
-            intro: 'Kies een beginpunt, voeg processtappen toe en lees toestanden, vermogens en waterdebieten direct af. Alles wordt automatisch opgeslagen in deze browser.',
+            intro: 'Drie werkwijzen: Processen (stap voor stap een proces in het diagram zetten), LBK samenstellen (een luchtbehandelingskast opbouwen en controleren) en Energieverbruik (de LBK een jaar lang doorrekenen). De app start altijd met een leeg diagram; je werk wordt automatisch bewaard en is via Bestand → Vorige sessie herstellen terug te halen.',
             mouse: 'Muis en touch',
             m1: 'Beweeg over het diagram: statusbalk toont t, x, RH, h, t_nat, t_dauw, ρ en p_w, met hulplijnen door de cursor.',
             m2: 'Dubbelklik: nieuw vrij punt (of beginpunt als het scenario nog leeg is).',
@@ -243,7 +248,7 @@
             ewf4: 'Momentopname bij constant debiet: per verdieping smoren (overschot) of hulpventilator (tekort). Toevoer en afvoer worden apart in balans gebracht (neutrale zone).',
             ewf5: 'Model volgens Bronsema (2013), Earth, Wind & Fire – Natuurlijke Airconditioning (TU Delft); zie tabblad Methode & bronnen.'
         },
-        view: { label: 'Weergave', mollier: 'Mollier-diagram', ewf: 'Earth, Wind & Fire' },
+        view: { label: 'Weergave', mollier: 'Processen', lbk: 'LBK samenstellen', energy: 'Energieverbruik', ewf: 'Earth, Wind & Fire', energyLocked: 'Stel eerst een LBK samen (tab LBK samenstellen).', mollierShort: 'Processen', lbkShort: 'LBK', energyShort: 'Energie', ewfShort: 'EWF' },
         ewf: {
             title: 'Earth, Wind & Fire', subtitle: 'Natuurlijke airconditioning · Bronsema 2013',
             assume: 'aanname', src: 'Bron', range: 'zinvol bereik', def: 'standaard',
@@ -541,13 +546,13 @@
             theme: 'Light/dark', help: 'Help & shortcuts', lang: 'Schakel naar Nederlands', projectName: 'Project name'
         },
         menu: {
-            new: 'New project', example: 'Load example project', open: 'Open project (.json)…', save: 'Save project (.json)',
+            new: 'New project', example: 'Load example project', restore: 'Restore previous session', open: 'Open project (.json)…', save: 'Save project (.json)',
             png: 'Chart as PNG', svg: 'Chart as SVG (vector)', csv: 'Tables as CSV (Excel)', print: 'Print / PDF'
         },
         chartType: { mollier: 'Mollier h,x', psychro: 'Psychrometric' },
         panel: {
-            system: 'System', scenarios: 'Scenarios', start: 'Start point & airflow',
-            add: 'Add process step', edit: 'Edit process step', steps: 'Process steps'
+            system: 'System', scenarios: 'Scenarios', start: 'Step 1 · Airflow & initial state',
+            add: 'Step 2 · Add a process', edit: 'Edit process step', steps: 'Process steps'
         },
         sys: {
             pressureBy: 'Pressure from', altitude: 'Altitude', pressure: 'Pressure', altitudeUnit: 'm',
@@ -560,7 +565,9 @@
         },
         start: {
             pair: 'Input by', flow: 'Airflow', flowVolume: 'm³/h', flowMass: 'kg/h dry air',
-            mdot: 'ṁ = {m} kg/s dry air · V = {v} m³/h at the start point', noFlow: 'No airflow: powers and water flows are not calculated.'
+            mdot: 'ṁ = {m} kg/s dry air · V = {v} m³/h at the start point', noFlow: 'No airflow: powers and water flows are not calculated.',
+            flowPending: 'The mass flow follows once the initial state is known.',
+            empty: 'Enter the initial state (e.g. outdoor air): temperature and relative humidity. Point 1 then appears on the chart.'
         },
         q: {
             t: 'Temperature', rh: 'Relative humidity', x: 'Humidity ratio', h: 'Enthalpy',
@@ -635,7 +642,8 @@
         },
         form: {
             add: 'Add', update: 'Update', cancel: 'Cancel', process: 'Process',
-            result: 'Result', needStart: 'Set a valid start point first.'
+            result: 'Result', needStart: 'Set a valid start point first.',
+            locked: 'Complete step 1 first (airflow and initial state). Then pick the process here: heating, cooling, humidifying, mixing, heat recovery …'
         },
         steps: {
             empty: 'No process steps yet. Pick a process above and click Add — or double-click the chart.',
@@ -698,11 +706,13 @@
             migrated: 'Project from the previous version imported.', newProject: 'New project started.', example: 'Example project loaded.',
             undo: 'Undone', redo: 'Redone', stepAdded: 'Step added.', stepUpdated: 'Step updated.',
             pointAdded: 'Free point added at {t} °C / {x} g/kg.', startSet: 'Start point set.', exportFail: 'Export failed.',
-            eggOn: 'Hej! MÖLLIER is assembled — no screws left over.', eggOff: 'Back to the standard style.'
+            eggOn: 'Hej! MÖLLIER is assembled — no screws left over.', eggOff: 'Back to the standard style.',
+            previous: 'Started with an empty chart. Your previous session “{name}” has been kept.', restoreBtn: 'Restore',
+            restored: 'Previous session restored: {name}', noPrevious: 'No previous session has been kept.'
         },
         confirm: { newProject: 'Start a new empty project? (Undo remains possible.)' },
         example: {
-            name: 'Example air handling unit', winter: 'Winter', summer: 'Summer', newName: 'New project'
+            name: 'Example air handling unit', winter: 'Winter', summer: 'Summer', newName: 'New project', lbk: 'Office AHU (example)'
         },
         err: {
             ERR_CASCADE_H: 'Cascade height must be between 0.5 and 200 m.', ERR_CASCADE_RWL: 'RW/L must be between 0 and 5.',
@@ -747,7 +757,7 @@
         },
         help: {
             title: 'Help & shortcuts', close: 'Close',
-            intro: 'Pick a start point, add process steps and read states, powers and water flows instantly. Everything is saved automatically in this browser.',
+            intro: 'Three ways of working: Processes (put a process on the chart step by step), AHU builder (assemble and check an air handling unit) and Energy use (simulate that AHU over a year). The app always starts with an empty chart; your work is saved automatically and can be brought back via File → Restore previous session.',
             mouse: 'Mouse and touch',
             m1: 'Move over the chart: the status bar shows t, x, RH, h, t_wb, t_dp, ρ and p_w, with guide lines through the cursor.',
             m2: 'Double-click: new free point (or start point if the scenario is empty).',
@@ -768,7 +778,7 @@
             ewf4: 'Snapshot at constant flow: per floor throttling (surplus) or auxiliary fan (deficit). Supply and exhaust are balanced separately (neutral zone).',
             ewf5: 'Model after Bronsema (2013), Earth, Wind & Fire – Natural Air Conditioning (TU Delft); see the Method & sources tab.'
         },
-        view: { label: 'View', mollier: 'Mollier chart', ewf: 'Earth, Wind & Fire' },
+        view: { label: 'View', mollier: 'Processes', lbk: 'AHU builder', energy: 'Energy use', ewf: 'Earth, Wind & Fire', energyLocked: 'Build an AHU first (AHU builder tab).', mollierShort: 'Processes', lbkShort: 'AHU', energyShort: 'Energy', ewfShort: 'EWF' },
         ewf: {
             title: 'Earth, Wind & Fire', subtitle: 'Natural air conditioning · Bronsema 2013',
             assume: 'assumption', src: 'Source', range: 'sensible range', def: 'default',
@@ -1104,8 +1114,19 @@
         return c === '' || c === '-' ? NaN : Number(c);
     }
 
+    /** Voeg teksten toe (diep samenvoegen), bijv. vanuit js/lbk/texts.js. */
+    function extend(l, obj) {
+        const merge = (dst, src) => {
+            for (const [k, v] of Object.entries(src)) {
+                if (v && typeof v === 'object' && !Array.isArray(v)) merge(dst[k] && typeof dst[k] === 'object' ? dst[k] : (dst[k] = {}), v);
+                else dst[k] = v;
+            }
+        };
+        if (DICTS[l]) merge(DICTS[l], obj);
+    }
+
     root.I18N = {
-        t, has, fmt, fmtAuto, parseNum,
+        t, has, fmt, fmtAuto, parseNum, extend,
         get lang() { return lang; },
         setLang(l) { lang = DICTS[l] ? l : 'nl'; },
         languages: Object.keys(DICTS)
