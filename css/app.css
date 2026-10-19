@@ -268,6 +268,19 @@ select.input { padding-right: 28px; appearance: none; background-image: url("dat
 .state-strip b { font-weight: 600; color: var(--text); }
 .state-strip.error { display: block; color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
 
+/* Stap voor stap: stap 1 uitlichten zolang hij leeg is, stap 2 vergrendeld tot dan */
+.state-strip.todo { display: block; white-space: normal; color: var(--text-2); border-color: var(--accent); background: var(--accent-soft); }
+#panel-start.todo { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.form-locked { margin: 0; font-size: 12.5px; color: var(--text-2); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px dashed var(--border-strong); background: var(--surface-2); }
+#panel-form.locked .cat-grid, #panel-form.locked #type-fld, #panel-form.locked .type-hint,
+#panel-form.locked .fields, #panel-form.locked .preview-box, #panel-form.locked .btn-row { display: none; }
+.cat-btn:disabled { opacity: .45; cursor: not-allowed; }
+.toast-btn { margin-left: 10px; height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .5); background: transparent; color: inherit; font-weight: 600; font-size: 12.5px; }
+.toast-btn:hover { background: rgba(255, 255, 255, .15); }
+.seg button:disabled { opacity: .45; cursor: not-allowed; }
+.view-switch .v-short { display: none; }
+@media (max-width: 1100px) { .view-switch .v-long { display: none; } .view-switch .v-short { display: inline; } }
+
 /* Categorieën */
 .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .cat-btn {
@@ -616,6 +629,21 @@ select.input { padding-right: 28px; appearance: none; background-image: url("dat
 :root[data-brand="ikea"] .kpi-final .kpi-icon { display: none; }
 
 /* ---------- Responsief ---------- */
+/* Topbalk: eerst de ondertitel, dan knoplabels, dan de merknaam weglaten; daaronder omslaan naar twee regels */
+.brand { flex-shrink: 0; }
+@media (max-width: 1680px) { .brand-text span { display: none; } }
+@media (max-width: 1500px) {
+    .topbar .tb-btn span { display: none; }
+    .topbar .tb-btn { width: 34px; padding: 0; }
+}
+@media (max-width: 1340px) { .brand-text { display: none; } .project-name { flex-basis: 120px; } }
+@media (max-width: 1180px) and (min-width: 761px) {
+    :root { --header-h: auto; }
+    .topbar { position: static; flex-wrap: wrap; height: auto; padding: 8px 16px; row-gap: 8px; backdrop-filter: none; }
+    .brand-text { display: flex; }
+    .toolbar { flex-wrap: wrap; justify-content: flex-end; }
+    .sidebar { position: static; max-height: none; }
+}
 @media (max-width: 1400px) {
     .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

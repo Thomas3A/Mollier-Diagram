@@ -199,3 +199,11 @@ test('procestype cascade: zelfde uitkomst als de EWF-kern en energiebalans', () 
         steps: [{ id: 'c', type: 'cascade', enabled: true, params: PR.defaultParams('cascade') }] }, p);
     assert.equal(r0.steps[0].error.code, 'ERR_NEED_FLOW');
 });
+
+test('leeg scenario (nog geen begintoestand): geen toestanden, stappen wachten', () => {
+    const r = PR.computeScenario({ start: null, flow: { mode: 'volume', value: null }, steps: [{ id: 'a', type: 'heat', enabled: true, params: PR.defaultParams('heat') }] }, p);
+    assert.equal(r.empty, true);
+    assert.equal(r.error, null);
+    assert.equal(r.states.length, 0);
+    assert.equal(r.steps[0].blocked, true);
+});

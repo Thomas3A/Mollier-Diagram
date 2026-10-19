@@ -532,7 +532,13 @@
      * Een ongeldige stap krijgt een foutmelding en wordt overgeslagen; de keten loopt door.
      */
     function computeScenario(scn, p) {
-        const res = { states: [], steps: [], error: null, mdot: 0, totals: null };
+        const res = { states: [], steps: [], error: null, empty: false, mdot: 0, totals: null };
+        if (!scn.start) {
+            // Nog geen begintoestand ingevoerd: leeg diagram, stappen wachten
+            res.empty = true;
+            res.steps = scn.steps.map((step) => ({ step, ok: false, blocked: true }));
+            return res;
+        }
         let s0;
         try {
             s0 = fromPairUI(scn.start.pair, scn.start.a, scn.start.b, p);

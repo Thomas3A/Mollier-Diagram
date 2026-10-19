@@ -1,7 +1,7 @@
 {
   "name": "mollier-diagram",
-  "version": "4.0.0",
-  "description": "Interactief Mollier h,x-diagram en psychrometrisch diagram voor luchtbehandelingsprocessen",
+  "version": "5.0.0",
+  "description": "Interactief Mollier h,x-diagram met LBK samenstellen en energieberekening per klimaatjaar",
   "private": true,
   "license": "MIT",
   "scripts": {
